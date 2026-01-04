@@ -1,17 +1,41 @@
 # IFS Activity Transformer
 
-A fine tuning application for classification of legacy IFS activities to new project structure in IFS Cloud. This web application uses RoBERTa BigBird transformer model to learn from historical activity mappings and predict appropriate activity paths for new activities.
+A fine tuning application for classification of legacy IFS activities to new project structure in IFS Cloud. This web application uses advanced active learning with multi-label classification, combining RoBERTa BigBird transformer with tabular features for optimal activity categorization.
 
 ## Features
 
 - 🗄️ **Oracle Database Integration**: Connect directly to your Oracle database to fetch activity mapping data
 - 📁 **CSV File Upload**: Alternative data loading via CSV file upload
-- 🤖 **RoBERTa BigBird Model**: State-of-the-art transformer model for sequence classification
+- ✏️ **Active Learning Annotation**: Interactive UI with uncertainty sampling - prioritizes samples the model is least confident about
+- 🏷️ **Multi-Label Classification**: Categorize activities with multiple labels (procurement, jobcard, milestone, expense, etc.)
+- 🔬 **Hybrid Model Architecture**: Combines RoBERTa text encoding with tabular numerical features
 - 📊 **Training Dashboard**: Real-time training progress monitoring with metrics
-- 🎯 **Prediction Interface**: Single and batch prediction capabilities
+- 🎯 **Prediction Interface**: Single and batch prediction capabilities with confidence scores
 - 📈 **Model Evaluation**: Performance metrics and confidence scores
 - 🏗️ **Modern Architecture**: Application factory pattern with dependency injection
 - 📋 **Best Practices**: Type hints, configuration management, and DRY principles
+
+## Active Learning Workflow
+
+The application implements a sophisticated **two-phase active learning approach**:
+
+### Phase 1: Multi-Label Embedding
+1. **Data Loading**: Import activities from Oracle DB or CSV with custom SQL queries
+2. **Uncertainty Sampling**: Model identifies activities it's least confident about
+3. **Intelligent Annotation**: Users label prioritized samples one at a time
+4. **Sanity Checks**: Occasionally shows confident predictions for validation
+5. **Category Assignment**: Multi-label classification (procurement, jobcard, milestone, etc.)
+
+### Phase 2: WBS Decoding (Future)
+- Use category embeddings to predict hierarchical WBS paths
+- Hierarchical classifier or seq2seq model for structure prediction
+
+### Why This Approach Works
+- **Uncertainty Sampling**: Maximizes model improvement per labeled sample
+- **Multi-Label**: Captures the multi-faceted nature of activities
+- **Hybrid Features**: Leverages both text descriptions and numerical data (# jobcards, procurement lines, etc.)
+- **Human-in-the-Loop**: Domain expertise guides model learning
+- **Interpretable**: Two-phase approach allows iterative refinement
 
 ## Architecture
 

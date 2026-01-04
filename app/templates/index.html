@@ -13,6 +13,7 @@
             <ul class="navbar-nav">
                 <li><a href="/" class="active">Home</a></li>
                 <li><a href="/database">Data</a></li>
+                <li><a href="/annotate">Annotate</a></li>
                 <li><a href="/train">Train</a></li>
                 <li><a href="/predict">Predict</a></li>
             </ul>
@@ -33,8 +34,14 @@
             </div>
 
             <div class="card">
+                <h3>✏️ Annotate Activities</h3>
+                <p>Label activities with categories using active learning and uncertainty sampling</p>
+                <a href="/annotate" class="btn btn-primary">Go to Annotation</a>
+            </div>
+
+            <div class="card">
                 <h3>🤖 Train Model</h3>
-                <p>Configure and train the RoBERTa BigBird classifier on your data</p>
+                <p>Configure and train the multi-label classifier on annotated data</p>
                 <a href="/train" class="btn btn-primary">Go to Training</a>
             </div>
 

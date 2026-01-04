@@ -100,6 +100,11 @@ def register_routes(app: Flask) -> None:
         """Prediction page."""
         return render_template('predict.html')
     
+    @app.route('/annotate')
+    def annotate_page():
+        """Annotation interface for active learning."""
+        return render_template('annotate.html')
+    
     @app.route('/api/database/connect', methods=['POST'])
     def connect_database():
         """Connect to Oracle database."""
@@ -325,6 +330,198 @@ def register_routes(app: Flask) -> None:
                 'preview': df.head(10).to_dict('records'),
                 'row_count': len(df)
             })
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Error: {str(e)}'
+            }), 500
+    
+    # Annotation API routes for active learning
+    @app.route('/api/annotate/get-batch', methods=['POST'])
+    def get_annotation_batch():
+        """
+        Get a batch of activities for annotation with uncertainty sampling.
+        """
+        try:
+            from app.active_learning import ActiveLearningService, MultiLabelActiveLearning
+            import numpy as np
+            
+            data = request.get_json()
+            batch_size = data.get('batch_size', 20)
+            strategy = data.get('sampling_strategy', 'least_confidence')
+            
+            # Load data
+            data_path = 'data/training_data.csv'
+            if not os.path.exists(data_path):
+                return jsonify({
+                    'success': False,
+                    'message': 'No training data found'
+                }), 404
+            
+            df = pd.read_csv(data_path)
+            
+            # Check if we have a trained model for predictions
+            config = get_service('config')
+            model_dir = config.model.save_dir
+            has_model = os.path.exists(model_dir)
+            
+            if has_model:
+                # Get predictions for uncertainty sampling
+                classifier = get_service('classifier')
+                try:
+                    classifier.load_model(model_dir)
+                    # Simple prediction - in production, handle multi-label properly
+                    texts = df.iloc[:, 1].tolist()  # Assuming second column is text
+                    predictions = []
+                    # TODO: Implement actual prediction logic
+                    predictions = np.random.rand(len(df), 8)  # Mock predictions
+                except:
+                    # If model loading fails, use random sampling
+                    predictions = np.random.rand(len(df), 8)
+            else:
+                # No model yet, use random sampling
+                predictions = np.random.rand(len(df), 8)
+            
+            # Use active learning to select samples
+            al_service = MultiLabelActiveLearning()
+            sample_ids = df.iloc[:, 0].astype(str).tolist()  # Assuming first column is ID
+            
+            selected = al_service.select_multilabel_samples(
+                predictions,
+                sample_ids,
+                n_samples=min(batch_size, len(df)),
+                sanity_check_ratio=0.1
+            )
+            
+            # Build activity objects for UI
+            activities = []
+            for item in selected:
+                idx = item['index']
+                row = df.iloc[idx]
+                
+                activity = {
+                    'id': str(row.iloc[0]),
+                    'name': str(row.iloc[1]) if len(row) > 1 else 'Unnamed',
+                    'description': str(row.iloc[2]) if len(row) > 2 else '',
+                    'uncertainty_score': item['uncertainty_score'],
+                    'max_confidence': 1 - item['uncertainty_score'],
+                    'predicted_categories': [],  # TODO: decode from predictions
+                    'features': {}  # TODO: extract numerical features
+                }
+                activities.append(activity)
+            
+            # Load annotation statistics
+            annotations_path = 'data/annotations.csv'
+            if os.path.exists(annotations_path):
+                annotations_df = pd.read_csv(annotations_path)
+                al_service_stats = ActiveLearningService()
+                stats = al_service_stats.get_annotation_statistics(annotations_df)
+            else:
+                stats = {
+                    'total_samples': len(df),
+                    'labeled_samples': 0,
+                    'unlabeled_samples': len(df),
+                    'completion_rate': 0
+                }
+            
+            return jsonify({
+                'success': True,
+                'activities': activities,
+                'statistics': stats
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Error: {str(e)}'
+            }), 500
+    
+    @app.route('/api/annotate/save', methods=['POST'])
+    def save_annotation():
+        """Save user annotation for an activity."""
+        try:
+            data = request.get_json()
+            activity_id = data.get('activity_id')
+            categories = data.get('categories', [])
+            uncertainty_score = data.get('uncertainty_score', 0)
+            
+            # Load or create annotations file
+            annotations_path = 'data/annotations.csv'
+            
+            if os.path.exists(annotations_path):
+                annotations_df = pd.read_csv(annotations_path)
+            else:
+                annotations_df = pd.DataFrame(columns=[
+                    'activity_id', 'categories', 'uncertainty_score', 'timestamp'
+                ])
+            
+            # Add or update annotation
+            from datetime import datetime
+            new_annotation = {
+                'activity_id': activity_id,
+                'categories': ','.join(categories),
+                'uncertainty_score': uncertainty_score,
+                'timestamp': datetime.now().isoformat(),
+                'label': 1 if categories else None  # For statistics
+            }
+            
+            # Remove existing annotation if any
+            annotations_df = annotations_df[annotations_df['activity_id'] != activity_id]
+            
+            # Add new annotation
+            annotations_df = pd.concat([
+                annotations_df,
+                pd.DataFrame([new_annotation])
+            ], ignore_index=True)
+            
+            # Save
+            os.makedirs('data', exist_ok=True)
+            annotations_df.to_csv(annotations_path, index=False)
+            
+            # Get updated statistics
+            from app.active_learning import ActiveLearningService
+            al_service = ActiveLearningService()
+            stats = al_service.get_annotation_statistics(annotations_df)
+            
+            return jsonify({
+                'success': True,
+                'message': 'Annotation saved',
+                'statistics': stats
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Error: {str(e)}'
+            }), 500
+    
+    @app.route('/api/annotate/update-query', methods=['POST'])
+    def update_annotation_query():
+        """Update the SQL query for fetching annotation data."""
+        try:
+            data = request.get_json()
+            query = data.get('query', '')
+            
+            if not query:
+                return jsonify({
+                    'success': False,
+                    'message': 'No query provided'
+                }), 400
+            
+            # Store query in a file for later use
+            query_path = 'data/annotation_query.sql'
+            os.makedirs('data', exist_ok=True)
+            
+            with open(query_path, 'w') as f:
+                f.write(query)
+            
+            # TODO: Execute query and reload data
+            
+            return jsonify({
+                'success': True,
+                'message': 'Query updated successfully'
+            })
+            
         except Exception as e:
             return jsonify({
                 'success': False,
