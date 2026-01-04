@@ -293,4 +293,7 @@ def upload_csv():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # WARNING: Debug mode should only be used in development
+    # In production, use a WSGI server like Gunicorn instead
+    debug_mode = os.getenv('FLASK_ENV') == 'development'
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
