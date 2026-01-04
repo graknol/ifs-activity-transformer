@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IFS Activity Transformer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="navbar-brand">IFS Activity Transformer</h1>
+            <ul class="navbar-nav">
+                <li><a href="/" class="active">Home</a></li>
+                <li><a href="/database">Data</a></li>
+                <li><a href="/train">Train</a></li>
+                <li><a href="/predict">Predict</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h2>Welcome to IFS Activity Transformer</h2>
+            <p>Train a RoBERTa BigBird classifier to map legacy IFS activities to new project structure</p>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h3>📊 Load Data</h3>
+                <p>Connect to Oracle database or upload CSV file with activity mappings</p>
+                <a href="/database" class="btn btn-primary">Go to Data</a>
+            </div>
+
+            <div class="card">
+                <h3>🤖 Train Model</h3>
+                <p>Configure and train the RoBERTa BigBird classifier on your data</p>
+                <a href="/train" class="btn btn-primary">Go to Training</a>
+            </div>
+
+            <div class="card">
+                <h3>🎯 Make Predictions</h3>
+                <p>Use the trained model to predict new activity mappings</p>
+                <a href="/predict" class="btn btn-primary">Go to Predict</a>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>About the Project</h3>
+            <p>
+                This application helps migrate legacy IFS10 activities to the new IFS Cloud 
+                project structure. Using state-of-the-art transformer models (RoBERTa BigBird), 
+                it learns from historical mappings to automatically classify new activities.
+            </p>
+            <h4>Features:</h4>
+            <ul>
+                <li>Oracle Database integration for data retrieval</li>
+                <li>CSV file upload support</li>
+                <li>RoBERTa BigBird transformer model training</li>
+                <li>Real-time training progress monitoring</li>
+                <li>Batch and single prediction capabilities</li>
+                <li>Model performance metrics and evaluation</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 IFS Activity Transformer. MIT License.</p>
+        </div>
+    </footer>
+</body>
+</html>

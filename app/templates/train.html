@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Train Model - IFS Activity Transformer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="navbar-brand">IFS Activity Transformer</h1>
+            <ul class="navbar-nav">
+                <li><a href="/">Home</a></li>
+                <li><a href="/database">Data</a></li>
+                <li><a href="/train" class="active">Train</a></li>
+                <li><a href="/predict">Predict</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Train Model</h2>
+        
+        <div class="card">
+            <h3>Training Configuration</h3>
+            
+            <div class="form-group">
+                <label for="text-column">Text Column:</label>
+                <input type="text" id="text-column" value="activity_description" 
+                       placeholder="Column containing activity descriptions">
+                <small>The column in your data that contains the text to classify</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="label-column">Label Column:</label>
+                <input type="text" id="label-column" value="new_activity_path" 
+                       placeholder="Column containing target labels">
+                <small>The column containing the target activity paths</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="test-size">Validation Split:</label>
+                <input type="number" id="test-size" value="0.2" min="0.1" max="0.5" step="0.05">
+                <small>Fraction of data to use for validation (0.1 - 0.5)</small>
+            </div>
+            
+            <button id="train-btn" class="btn btn-primary" onclick="startTraining()">
+                Start Training
+            </button>
+        </div>
+
+        <div id="training-progress" class="card" style="display: none;">
+            <h3>Training Progress</h3>
+            
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <p id="progress-text" class="progress-text">0%</p>
+            </div>
+            
+            <p id="status-message" class="status-message">Initializing...</p>
+            
+            <div id="training-metrics" style="display: none;">
+                <h4>Training Metrics</h4>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <h5>Training Loss</h5>
+                        <p id="train-loss" class="metric-value">-</p>
+                    </div>
+                    <div class="metric-card">
+                        <h5>Validation Accuracy</h5>
+                        <p id="val-accuracy" class="metric-value">-</p>
+                    </div>
+                    <div class="metric-card">
+                        <h5>Validation Loss</h5>
+                        <p id="val-loss" class="metric-value">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>About the Model</h3>
+            <p>
+                This application uses <strong>RoBERTa BigBird</strong>, a state-of-the-art 
+                transformer model designed for long sequences. The model is fine-tuned on your 
+                activity mapping data to learn patterns and predict appropriate activity paths 
+                for new activities.
+            </p>
+            <h4>Training Tips:</h4>
+            <ul>
+                <li>Ensure your data has consistent labels and good coverage of all activity types</li>
+                <li>More training data generally leads to better performance</li>
+                <li>Training may take 15-30 minutes depending on data size and hardware</li>
+                <li>The model will automatically save checkpoints during training</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/train.js') }}"></script>
+</body>
+</html>

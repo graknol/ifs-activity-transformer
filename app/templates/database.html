@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Management - IFS Activity Transformer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="navbar-brand">IFS Activity Transformer</h1>
+            <ul class="navbar-nav">
+                <li><a href="/">Home</a></li>
+                <li><a href="/database" class="active">Data</a></li>
+                <li><a href="/train">Train</a></li>
+                <li><a href="/predict">Predict</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Data Management</h2>
+        
+        <div class="tabs">
+            <button class="tab-button active" onclick="switchTab('oracle')">Oracle Database</button>
+            <button class="tab-button" onclick="switchTab('csv')">Upload CSV</button>
+        </div>
+
+        <!-- Oracle Database Tab -->
+        <div id="oracle-tab" class="tab-content active">
+            <div class="card">
+                <h3>Oracle Database Connection</h3>
+                <p>Connect to your Oracle database to fetch activity mappings</p>
+                
+                <button id="connect-btn" class="btn btn-primary" onclick="connectDatabase()">
+                    Connect to Database
+                </button>
+                
+                <div id="db-status" class="status-message"></div>
+                
+                <div id="db-stats" class="stats-grid" style="display: none;">
+                    <div class="stat-card">
+                        <h4>Total Activities</h4>
+                        <p id="total-activities" class="stat-number">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Mapped Activities</h4>
+                        <p id="mapped-activities" class="stat-number">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Unmapped Activities</h4>
+                        <p id="unmapped-activities" class="stat-number">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Unique New Activities</h4>
+                        <p id="unique-activities" class="stat-number">0</p>
+                    </div>
+                </div>
+                
+                <div id="fetch-section" style="display: none;">
+                    <h4>Fetch Training Data</h4>
+                    <textarea id="custom-query" placeholder="Optional: Enter custom SQL query (leave empty for default)" rows="4"></textarea>
+                    <button class="btn btn-primary" onclick="fetchData()">Fetch Data</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CSV Upload Tab -->
+        <div id="csv-tab" class="tab-content">
+            <div class="card">
+                <h3>Upload CSV File</h3>
+                <p>Upload a CSV file containing activity mappings. Required columns:</p>
+                <ul>
+                    <li><strong>activity_description</strong>: Text description of the activity</li>
+                    <li><strong>new_activity_path</strong>: Target activity path (e.g., Project->SubProject->Activity)</li>
+                </ul>
+                
+                <div class="upload-area">
+                    <input type="file" id="csv-file" accept=".csv" style="display: none;" onchange="handleFileSelect()">
+                    <button class="btn btn-primary" onclick="document.getElementById('csv-file').click()">
+                        Choose CSV File
+                    </button>
+                    <p id="file-name"></p>
+                </div>
+                
+                <button id="upload-btn" class="btn btn-success" style="display: none;" onclick="uploadCSV()">
+                    Upload File
+                </button>
+            </div>
+        </div>
+
+        <!-- Data Preview -->
+        <div id="data-preview" class="card" style="display: none;">
+            <h3>Data Preview</h3>
+            <div class="data-info">
+                <p><strong>Total Rows:</strong> <span id="row-count">0</span></p>
+                <p><strong>Columns:</strong> <span id="column-list"></span></p>
+            </div>
+            <div class="table-container">
+                <table id="preview-table">
+                    <thead id="table-head"></thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/database.js') }}"></script>
+</body>
+</html>
