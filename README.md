@@ -10,6 +10,20 @@ A fine tuning application for classification of legacy IFS activities to new pro
 - 📊 **Training Dashboard**: Real-time training progress monitoring with metrics
 - 🎯 **Prediction Interface**: Single and batch prediction capabilities
 - 📈 **Model Evaluation**: Performance metrics and confidence scores
+- 🏗️ **Modern Architecture**: Application factory pattern with dependency injection
+- 📋 **Best Practices**: Type hints, configuration management, and DRY principles
+
+## Architecture
+
+This project follows Python best practices and design patterns similar to C#'s IServiceCollection:
+
+- **Application Factory Pattern**: Creates app instances with proper configuration
+- **Dependency Injection**: Service container for managing dependencies
+- **Configuration Management**: Type-safe configuration with dataclasses
+- **Separation of Concerns**: Clear separation between routes, services, and data access
+- **Testability**: Easy to test with mock services
+
+See [.github/instructions.md](.github/instructions.md) for detailed documentation on patterns and practices.
 
 ## Installation
 
@@ -159,11 +173,87 @@ The application uses **RoBERTa BigBird** (`google/bigbird-roberta-base`), which:
 
 ```
 ifs-activity-transformer/
+├── .github/
+│   └── instructions.md     # Python best practices & patterns
 ├── app/
-│   ├── app.py              # Flask application
+│   ├── app.py              # Flask application factory
+│   ├── config.py           # Configuration classes
 │   ├── database.py         # Oracle DB connection utilities
 │   ├── model.py            # Model training and inference
 │   ├── static/
+│   │   ├── css/
+│   │   │   └── style.css   # Application styles
+│   │   └── js/
+│   │       ├── database.js # Database page functionality
+│   │       ├── train.js    # Training page functionality
+│   │       └── predict.js  # Prediction page functionality
+│   └── templates/
+│       ├── index.html      # Home page
+│       ├── database.html   # Data management page
+│       ├── train.html      # Training page
+│       └── predict.html    # Prediction page
+├── services/
+│   ├── __init__.py
+│   └── container.py        # Dependency injection container
+├── data/                   # Training data storage
+├── models/                 # Saved models directory
+├── requirements.txt        # Python dependencies
+├── .env.example           # Environment variables template
+├── run.py                 # Application entry point
+└── README.md              # This file
+```
+
+## Code Architecture
+
+The application follows Python best practices with patterns similar to C#:
+
+### Dependency Injection
+
+```python
+# Service container registration
+from services.container import ServiceContainer
+
+container = ServiceContainer()
+container.register_singleton('db', OracleDBConnection(config))
+container.register_transient('classifier', lambda: ActivityClassifier(config))
+
+# Service resolution
+db = container.resolve('db')
+```
+
+### Application Factory
+
+```python
+# Create app with configuration
+from app.app import create_app
+
+app = create_app()  # Uses Config.from_env()
+
+# Or with custom config
+custom_config = Config()
+app = create_app(custom_config)
+```
+
+### Type-Safe Configuration
+
+```python
+# Configuration with dataclasses
+from app.config import Config, DatabaseConfig, ModelConfig
+
+config = Config.from_env()
+db_config = config.database  # Type-safe access
+model_config = config.model
+```
+
+See [.github/instructions.md](.github/instructions.md) for comprehensive documentation on:
+- Dependency injection patterns
+- Configuration management
+- Service layer pattern
+- Repository pattern
+- Testing strategies
+- DRY principles
+
+## Development
 │   │   ├── css/
 │   │   │   └── style.css   # Application styles
 │   │   └── js/

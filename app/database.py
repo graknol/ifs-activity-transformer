@@ -1,25 +1,30 @@
 """
 Database connection and data retrieval utilities for Oracle DB.
+Following repository pattern and dependency injection principles.
 """
 import os
 import oracledb
 import pandas as pd
-from typing import Optional, Tuple
-from dotenv import load_dotenv
-
-load_dotenv()
+from typing import Optional, Dict
+from app.config import DatabaseConfig
 
 
 class OracleDBConnection:
-    """Handles Oracle database connections and data retrieval."""
+    """
+    Handles Oracle database connections and data retrieval.
     
-    def __init__(self):
-        """Initialize database connection parameters from environment variables."""
-        self.user = os.getenv('ORACLE_USER')
-        self.password = os.getenv('ORACLE_PASSWORD')
-        self.host = os.getenv('ORACLE_HOST')
-        self.port = os.getenv('ORACLE_PORT', '1521')
-        self.service = os.getenv('ORACLE_SERVICE')
+    This class follows the repository pattern, separating data access
+    from business logic. Uses dependency injection for configuration.
+    """
+    
+    def __init__(self, config: Optional[DatabaseConfig] = None):
+        """
+        Initialize database connection with configuration.
+        
+        Args:
+            config: Database configuration. If None, loads from environment.
+        """
+        self.config = config or DatabaseConfig.from_env()
         self.connection = None
     
     def connect(self) -> bool:
@@ -30,10 +35,10 @@ class OracleDBConnection:
             bool: True if connection successful, False otherwise
         """
         try:
-            dsn = f"{self.host}:{self.port}/{self.service}"
+            dsn = f"{self.config.host}:{self.config.port}/{self.config.service}"
             self.connection = oracledb.connect(
-                user=self.user,
-                password=self.password,
+                user=self.config.user,
+                password=self.config.password,
                 dsn=dsn
             )
             return True
@@ -41,11 +46,20 @@ class OracleDBConnection:
             print(f"Error connecting to database: {e}")
             return False
     
-    def disconnect(self):
+    def disconnect(self) -> None:
         """Close database connection."""
         if self.connection:
             self.connection.close()
             self.connection = None
+    
+    def __enter__(self):
+        """Context manager entry: establish connection."""
+        self.connect()
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit: close connection."""
+        self.disconnect()
     
     def fetch_training_data(self, query: Optional[str] = None) -> pd.DataFrame:
         """

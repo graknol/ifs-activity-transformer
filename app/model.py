@@ -1,5 +1,6 @@
 """
 Model training utilities for RoBERTa BigBird classifier.
+Following service pattern and dependency injection principles.
 """
 import os
 import torch
@@ -17,27 +18,31 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Optional
 import json
-from dotenv import load_dotenv
-
-load_dotenv()
+from app.config import ModelConfig
 
 
 class ActivityClassifier:
-    """Handles training and inference for activity classification."""
+    """
+    Handles training and inference for activity classification.
     
-    def __init__(self, model_name: Optional[str] = None):
+    This class follows the service pattern with dependency injection,
+    separating model operations from application logic.
+    """
+    
+    def __init__(self, config: Optional[ModelConfig] = None):
         """
-        Initialize the classifier.
+        Initialize the classifier with configuration.
         
         Args:
-            model_name: HuggingFace model name, defaults to BigBird RoBERTa
+            config: Model configuration. If None, loads from environment.
         """
-        self.model_name = model_name or os.getenv('MODEL_NAME', 'google/bigbird-roberta-base')
-        self.max_length = int(os.getenv('MAX_LENGTH', '512'))
-        self.batch_size = int(os.getenv('BATCH_SIZE', '8'))
-        self.learning_rate = float(os.getenv('LEARNING_RATE', '2e-5'))
-        self.num_epochs = int(os.getenv('NUM_EPOCHS', '3'))
-        self.save_dir = os.getenv('SAVE_DIR', './models/saved')
+        self.config = config or ModelConfig.from_env()
+        self.model_name = self.config.model_name
+        self.max_length = self.config.max_length
+        self.batch_size = self.config.batch_size
+        self.learning_rate = self.config.learning_rate
+        self.num_epochs = self.config.num_epochs
+        self.save_dir = self.config.save_dir
         
         self.tokenizer = None
         self.model = None
