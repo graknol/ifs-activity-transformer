@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from app.database import OracleDBConnection
 from app.model import ActivityClassifier
 import pandas as pd
-from datetime import datetime
 
 load_dotenv()
 
@@ -16,6 +15,8 @@ app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
 
 # Global objects
+# NOTE: These global objects are not thread-safe. For production use with
+# multiple workers, consider using Redis or a proper job queue system like Celery.
 db_connection = None
 classifier = None
 training_status = {
@@ -89,7 +90,7 @@ def fetch_data():
                 'message': 'No data retrieved from database'
             }), 404
         
-        # Save data to session
+        # Save data to file
         data_path = 'data/training_data.csv'
         os.makedirs('data', exist_ok=True)
         df.to_csv(data_path, index=False)

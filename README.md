@@ -199,6 +199,14 @@ Use a production WSGI server like Gunicorn:
 gunicorn -w 4 -b 0.0.0.0:5000 app.app:app
 ```
 
+**Important Production Notes:**
+- Use a single worker (`-w 1`) for training to avoid concurrency issues with global state
+- For multi-worker deployments, implement proper state management (Redis, database, or job queue)
+- Configure authentication and authorization for the web interface
+- Validate and sanitize all user inputs, especially custom SQL queries
+- Use HTTPS in production environments
+- Set strong `FLASK_SECRET_KEY` in production
+
 ## Troubleshooting
 
 ### Database Connection Issues

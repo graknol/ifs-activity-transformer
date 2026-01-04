@@ -60,6 +60,9 @@ class ActivityClassifier:
         Returns:
             Tuple of (train_dataset, val_dataset, num_labels)
         """
+        # Create a copy to avoid modifying the original
+        df = df.copy()
+        
         # Encode labels
         labels = self.label_encoder.fit_transform(df[label_column])
         df['labels'] = labels

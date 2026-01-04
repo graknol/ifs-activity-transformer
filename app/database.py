@@ -84,6 +84,10 @@ class OracleDBConnection:
         """
         Execute a custom SQL query and return results as DataFrame.
         
+        WARNING: This method executes arbitrary SQL queries. Only use with
+        trusted input. In production, implement query validation or use
+        parameterized queries with allowed patterns.
+        
         Args:
             query: SQL query to execute
         
