@@ -51,18 +51,24 @@ GPU: NVIDIA GeForce RTX 5070 Ti
 # This ONE command does EVERYTHING:
 # - Creates .venv with Python 3.11 (from .python-version)
 # - Installs all dependencies (from pyproject.toml)
-# - Installs dev/test tools
+# - Installs dev/test tools automatically
 # - Creates uv.lock for reproducible builds
 uv sync
 ```
 
 **That's it!** No need to manually:
 - Create virtual environments
-- Install requirements.txt
-- Manage dependencies
-- Track versions
+- Install dependencies one by one
+- Manage package versions
+- Track what's installed
 
 `uv sync` handles everything automatically based on `pyproject.toml`!
+
+**What gets installed:**
+- Core dependencies (Flask, Transformers, etc.)
+- Database drivers (Oracle DB)
+- Cloud storage (Azure Blob)
+- Dev tools (pytest, black, flake8, etc.) - installed automatically!
 
 ### 5. Configure Environment Variables
 
