@@ -43,7 +43,7 @@ def run_tests(args):
         cmd += " --cov=app --cov=services --cov-report=html --cov-report=term-missing"
     
     if args.fast:
-        cmd += ' -m "not slow and not integration"'
+        cmd += ' -m "not slow"'
     
     if args.verbose:
         cmd += " -v"
@@ -57,8 +57,14 @@ def run_lint(args):
     
     # Flake8
     success &= run_command(
-        "flake8 app services tests --count --select=E9,F63,F7,F82 --show-source --statistics",
+        "flake8 app services tests",
         "Running flake8"
+    )
+    
+    # Pylint
+    success &= run_command(
+        "pylint app services",
+        "Running pylint"
     )
     
     # Black check
@@ -257,9 +263,9 @@ def main():
     
     args = parser.parse_args()
     
-    # If no arguments provided, show help
+    # If no arguments provided, run tests by default
     if len(sys.argv) == 1:
-        args.test = True  # Default to running tests
+        args.test = True
     
     success = True
     
