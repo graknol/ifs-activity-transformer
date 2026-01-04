@@ -283,6 +283,64 @@ dependencies = [
 ]
 ```
 
+## Running Tests (Windows-Friendly)
+
+We provide cross-platform test runners that work on Windows without requiring MinGW or WSL:
+
+### Run Tests
+
+```powershell
+# Basic test run
+python run_tests.py
+
+# Run with coverage report
+python run_tests.py --cov
+
+# Run only fast tests (skip slow integration tests)
+python run_tests.py --fast
+
+# Alternatively, use the batch file
+run_tests.bat
+run_tests.bat --cov
+```
+
+### Other Test Commands
+
+```powershell
+# Run linters
+python run_tests.py --lint
+
+# Format code
+python run_tests.py --format
+
+# Type checking
+python run_tests.py --type-check
+
+# Security checks
+python run_tests.py --security
+
+# Clean up temporary files (cross-platform)
+python run_tests.py --clean
+
+# Run all checks (CI mode)
+python run_tests.py --all
+```
+
+### Direct pytest (also works)
+
+```powershell
+# Run all tests
+pytest
+
+# Run specific test file
+pytest tests/test_config.py
+
+# Run with verbose output
+pytest -v
+```
+
+**Note:** We intentionally avoid using Makefiles on Windows since they require MinGW or WSL. The `run_tests.py` script provides all the same functionality using pure Python.
+
 ## Features That "Just Work"
 
 ✅ **Automatic GPU Detection**: Detects and uses your RTX 5070 Ti automatically  

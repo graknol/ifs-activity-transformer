@@ -132,6 +132,60 @@ Comprehensive guide covering:
 
 ## Running Tests
 
+### Cross-Platform Test Runner (Recommended for Windows)
+
+We provide a Python-based test runner that works on all platforms without requiring Make or MinGW:
+
+```bash
+# Basic test run
+python run_tests.py
+
+# Run with coverage report
+python run_tests.py --cov
+
+# Run only fast tests (skip slow integration tests)
+python run_tests.py --fast
+
+# Windows users can also use the batch file
+run_tests.bat
+run_tests.bat --cov
+```
+
+### Other Commands
+
+```bash
+# Code quality
+python run_tests.py --lint       # Run linters
+python run_tests.py --format     # Auto-format code
+python run_tests.py --type-check # Type checking
+python run_tests.py --security   # Security scan
+
+# Maintenance
+python run_tests.py --clean      # Clean temporary files
+python run_tests.py --install    # Install dependencies
+python run_tests.py --all        # Run all checks (CI mode)
+```
+
+### Direct pytest (Works on all platforms)
+
+```bash
+pytest                           # Run all tests
+pytest --cov                     # With coverage
+pytest -v                        # Verbose output
+pytest tests/test_config.py      # Specific test file
+pytest -m "not slow"             # Skip slow tests
+```
+
+### Using Makefile (Linux/macOS only)
+
+```bash
+make test          # Run all tests
+make test-cov      # With coverage
+make test-fast     # Fast tests only
+```
+
+**Note for Windows users:** The Makefile requires MinGW or WSL on Windows. We recommend using `run_tests.py` or `run_tests.bat` instead, which work natively on Windows without additional dependencies.
+
 ### Basic Usage
 ```bash
 # Run all tests

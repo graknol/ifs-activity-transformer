@@ -415,6 +415,57 @@ See [.github/instructions.md](.github/instructions.md) for comprehensive documen
 
 ## Development
 
+### Running Tests (Cross-Platform)
+
+We provide cross-platform test runners that work on Windows without requiring MinGW:
+
+```bash
+# Run all tests (works on all platforms)
+python run_tests.py
+
+# Run with coverage report
+python run_tests.py --cov
+
+# Run only fast tests
+python run_tests.py --fast
+
+# Windows users can also use the batch file
+run_tests.bat
+run_tests.bat --cov
+```
+
+Other test commands:
+```bash
+# Run linters
+python run_tests.py --lint
+
+# Format code
+python run_tests.py --format
+
+# Type checking
+python run_tests.py --type-check
+
+# Security checks
+python run_tests.py --security
+
+# Clean up temporary files
+python run_tests.py --clean
+
+# Run all checks (CI mode)
+python run_tests.py --all
+```
+
+Direct pytest also works:
+```bash
+pytest                    # Run all tests
+pytest --cov             # With coverage
+pytest -v                # Verbose output
+```
+
+**Note for Windows users:** We intentionally avoid using Makefiles on Windows since they require MinGW or WSL. The `run_tests.py` script provides all the same functionality using pure Python.
+
+See [tests/README.md](tests/README.md) for comprehensive testing documentation.
+
 ### Running in Development Mode
 
 ```bash

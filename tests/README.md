@@ -4,50 +4,63 @@ Comprehensive unit test suite for the IFS Activity Transformer application, foll
 
 ## Running Tests
 
-### Run all tests
+### Cross-Platform Test Runner (Recommended for Windows)
+
+We provide a cross-platform Python script that works on Windows without requiring MinGW or Make:
+
 ```bash
+# Windows users can use either:
+python run_tests.py              # Run all tests
+python run_tests.py --cov        # Run with coverage
+python run_tests.py --fast       # Run fast tests only
+
+# Or use the batch file:
+run_tests.bat                    # Run all tests
+run_tests.bat --cov             # Run with coverage
+```
+
+### Direct pytest Commands (Works on all platforms)
+
+```bash
+# Run all tests
 pytest
-```
 
-### Run specific test file
-```bash
+# Run specific test file
 pytest tests/test_config.py
-```
 
-### Run specific test class
-```bash
+# Run specific test class
 pytest tests/test_config.py::TestDatabaseConfig
-```
 
-### Run specific test
-```bash
+# Run specific test
 pytest tests/test_config.py::TestDatabaseConfig::test_from_env_with_all_values
-```
 
-### Run with coverage
-```bash
+# Run with coverage
 pytest --cov=app --cov=services --cov-report=html
-```
 
-### Run only fast tests (skip slow integration tests)
-```bash
+# Run only fast tests (skip slow integration tests)
 pytest -m "not slow"
-```
 
-### Run only unit tests
-```bash
+# Run only unit tests
 pytest -m unit
-```
 
-### Run with verbose output
-```bash
+# Run with verbose output
 pytest -v
-```
 
-### Run with output capture disabled (see print statements)
-```bash
+# Run with output capture disabled (see print statements)
 pytest -s
 ```
+
+### Using Makefile (Linux/macOS only)
+
+If you're on Linux or macOS, you can use the Makefile:
+
+```bash
+make test              # Run all tests
+make test-cov          # Run with coverage
+make test-fast         # Run fast tests only
+```
+
+**Note:** Windows users should use `run_tests.py` or `run_tests.bat` instead of the Makefile, as Make requires MinGW or WSL on Windows.
 
 ## Test Structure
 
@@ -163,15 +176,43 @@ jobs:
       - run: pytest
 ```
 
-## Continuous Testing
+## Additional Test Commands
 
-### Watch mode (requires pytest-watch)
+### Cross-Platform Commands (All Users)
+
+```bash
+# Run linters
+python run_tests.py --lint
+
+# Format code
+python run_tests.py --format
+
+# Run type checking
+python run_tests.py --type-check
+
+# Run security checks
+python run_tests.py --security
+
+# Clean up temporary files (cross-platform)
+python run_tests.py --clean
+
+# Install dependencies
+python run_tests.py --install
+python run_tests.py --install --dev  # Include test dependencies
+
+# Run all checks (CI mode)
+python run_tests.py --all
+```
+
+### Continuous Testing
+
+#### Watch mode (requires pytest-watch)
 ```bash
 pip install pytest-watch
 ptw
 ```
 
-### Auto-reload on changes
+#### Auto-reload on changes
 ```bash
 pytest --looponfail
 ```

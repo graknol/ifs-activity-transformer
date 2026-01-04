@@ -1,5 +1,12 @@
 # Makefile for IFS Activity Transformer
 # Provides convenient commands for development, testing, and deployment
+#
+# NOTE FOR WINDOWS USERS:
+# This Makefile requires GNU Make which needs MinGW, WSL, or Cygwin on Windows.
+# For a Windows-friendly alternative, use the cross-platform Python scripts:
+#   - python run_tests.py          # Cross-platform test runner
+#   - run_tests.bat                # Windows batch wrapper
+# These scripts provide all the same functionality without requiring Make.
 
 .PHONY: help install install-dev test test-cov test-fast lint format clean run docker-build docker-run
 
