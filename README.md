@@ -9,11 +9,39 @@ A fine tuning application for classification of legacy IFS activities to new pro
 - ✏️ **Active Learning Annotation**: Interactive UI with uncertainty sampling - prioritizes samples the model is least confident about
 - 🏷️ **Multi-Label Classification**: Categorize activities with multiple labels (procurement, jobcard, milestone, expense, etc.)
 - 🔬 **Hybrid Model Architecture**: Combines RoBERTa text encoding with tabular numerical features
+- ☁️ **Azure Blob Backup**: Automatic and manual snapshots of annotations to Azure Storage - never lose valuable training data
 - 📊 **Training Dashboard**: Real-time training progress monitoring with metrics
 - 🎯 **Prediction Interface**: Single and batch prediction capabilities with confidence scores
 - 📈 **Model Evaluation**: Performance metrics and confidence scores
 - 🏗️ **Modern Architecture**: Application factory pattern with dependency injection
 - 📋 **Best Practices**: Type hints, configuration management, and DRY principles
+
+## Data Protection with Azure Backup
+
+The application includes comprehensive backup capabilities to protect valuable annotation data:
+
+### Automatic Backups
+- **Auto-snapshots**: Automatically creates backups every N annotations (configurable)
+- **Session backups**: Saves data at the end of annotation sessions
+- **Zero data loss**: All manual tagging and user answers are preserved
+
+### Manual Backups
+- **On-demand backups**: Create backups anytime with a single click
+- **Milestone backups**: Create named snapshots at important points (e.g., "After 100 annotations")
+- **Backup manager UI**: View, manage, and restore from previous backups
+
+### Restoration
+- **Easy recovery**: Restore annotations from any previous backup
+- **Backup history**: View all backups with timestamps and sizes
+- **Version control**: Keep multiple versions of your annotation data
+
+### Configuration
+Add to your `.env` file:
+```bash
+AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=your_account;AccountKey=your_key;EndpointSuffix=core.windows.net
+AZURE_CONTAINER_NAME=ifs-annotations
+AUTO_BACKUP_THRESHOLD=10
+```
 
 ## Active Learning Workflow
 

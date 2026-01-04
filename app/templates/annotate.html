@@ -242,6 +242,46 @@
                 <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%"></div>
             </div>
             <p><strong><span id="labeled-count">0</span></strong> of <strong><span id="total-count">0</span></strong> activities labeled (<span id="completion-rate">0</span>%)</p>
+            
+            <!-- Backup Status -->
+            <div id="backup-status" style="margin-top: 1rem; padding: 0.75rem; background: #d4edda; border-radius: 6px; display: none;">
+                <p style="margin: 0; color: #155724;">
+                    <strong>☁️ Azure Backup:</strong> <span id="backup-status-text">Enabled</span> | 
+                    Last backup: <span id="last-backup-time">Never</span>
+                </p>
+            </div>
+            
+            <div style="margin-top: 1rem;">
+                <button class="btn btn-secondary" onclick="createManualBackup()" style="font-size: 0.9rem;">
+                    💾 Create Backup Now
+                </button>
+                <button class="btn btn-secondary" onclick="showBackupManager()" style="font-size: 0.9rem;">
+                    📂 Manage Backups
+                </button>
+            </div>
+        </div>
+
+        <!-- Backup Manager Modal (initially hidden) -->
+        <div id="backup-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto;">
+            <div style="max-width: 800px; margin: 50px auto; background: white; border-radius: 8px; padding: 2rem;">
+                <h3>Backup Manager</h3>
+                
+                <div style="margin: 1.5rem 0;">
+                    <h4>Create Milestone Backup</h4>
+                    <input type="text" id="milestone-name" placeholder="Milestone name (e.g., After 100 annotations)" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;">
+                    <textarea id="milestone-desc" placeholder="Description (optional)" style="width: 100%; padding: 0.5rem; min-height: 60px;"></textarea>
+                    <button class="btn btn-primary" onclick="createMilestoneBackup()">Create Milestone</button>
+                </div>
+                
+                <div style="margin: 1.5rem 0;">
+                    <h4>Available Backups</h4>
+                    <div id="backup-list" style="max-height: 300px; overflow-y: auto;">
+                        <p>Loading backups...</p>
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="closeBackupManager()">Close</button>
+            </div>
         </div>
 
         <!-- SQL Query Editor (Collapsible) -->

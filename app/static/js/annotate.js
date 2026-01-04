@@ -19,7 +19,164 @@ let categories = [
 document.addEventListener('DOMContentLoaded', () => {
     loadCategories();
     loadActivities();
+    checkBackupStatus();
 });
+
+// Backup management functions
+async function checkBackupStatus() {
+    try {
+        const response = await fetch('/api/backup/status');
+        const data = await response.json();
+        
+        if (data.success && data.backup_enabled) {
+            const statusDiv = document.getElementById('backup-status');
+            const statusText = document.getElementById('backup-status-text');
+            const lastBackup = document.getElementById('last-backup-time');
+            
+            statusDiv.style.display = 'block';
+            statusText.textContent = 'Enabled';
+            
+            if (data.statistics && data.statistics.latest_backup) {
+                const backupDate = new Date(data.statistics.latest_backup.created);
+                lastBackup.textContent = backupDate.toLocaleString();
+            }
+        }
+    } catch (error) {
+        console.error('Error checking backup status:', error);
+    }
+}
+
+async function createManualBackup() {
+    try {
+        const response = await fetch('/api/backup/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                type: 'manual'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Backup created successfully!');
+            checkBackupStatus();
+        } else {
+            alert('Backup failed: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error creating backup:', error);
+        alert('Failed to create backup');
+    }
+}
+
+async function createMilestoneBackup() {
+    const name = document.getElementById('milestone-name').value;
+    const description = document.getElementById('milestone-desc').value;
+    
+    if (!name) {
+        alert('Please enter a milestone name');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/backup/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                type: 'milestone',
+                milestone_name: name,
+                description: description
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Milestone backup created!');
+            document.getElementById('milestone-name').value = '';
+            document.getElementById('milestone-desc').value = '';
+            loadBackupList();
+        } else {
+            alert('Backup failed: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error creating milestone:', error);
+        alert('Failed to create milestone backup');
+    }
+}
+
+async function showBackupManager() {
+    document.getElementById('backup-modal').style.display = 'block';
+    await loadBackupList();
+}
+
+function closeBackupManager() {
+    document.getElementById('backup-modal').style.display = 'none';
+}
+
+async function loadBackupList() {
+    try {
+        const response = await fetch('/api/backup/list?limit=50');
+        const data = await response.json();
+        
+        const listDiv = document.getElementById('backup-list');
+        
+        if (data.success && data.backups.length > 0) {
+            listDiv.innerHTML = '<table style="width: 100%; border-collapse: collapse;">' +
+                '<tr style="border-bottom: 2px solid #ddd;"><th>Name</th><th>Date</th><th>Size</th><th>Action</th></tr>' +
+                data.backups.map(backup => `
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 0.5rem;">${backup.name}</td>
+                        <td style="padding: 0.5rem;">${new Date(backup.created).toLocaleString()}</td>
+                        <td style="padding: 0.5rem;">${(backup.size / 1024).toFixed(2)} KB</td>
+                        <td style="padding: 0.5rem;">
+                            <button onclick="restoreBackup('${backup.name}')" class="btn btn-sm">Restore</button>
+                        </td>
+                    </tr>
+                `).join('') +
+                '</table>';
+        } else {
+            listDiv.innerHTML = '<p>No backups available</p>';
+        }
+    } catch (error) {
+        console.error('Error loading backups:', error);
+        document.getElementById('backup-list').innerHTML = '<p>Error loading backups</p>';
+    }
+}
+
+async function restoreBackup(blobName) {
+    if (!confirm('Are you sure you want to restore this backup? This will create a new file with restored data.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/backup/restore', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                blob_name: blobName
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Backup restored successfully! Check the data folder for the restored file.');
+        } else {
+            alert('Restore failed: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error restoring backup:', error);
+        alert('Failed to restore backup');
+    }
+}
 
 function loadCategories() {
     const grid = document.getElementById('categories-grid');

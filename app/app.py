@@ -8,6 +8,7 @@ from flask import Flask, render_template, request, jsonify, g
 from app.config import Config
 from app.database import OracleDBConnection
 from app.model import ActivityClassifier
+from app.backup_service import AzureBlobBackupService, AutoBackupManager
 from services.container import ServiceContainer
 import pandas as pd
 
@@ -40,6 +41,11 @@ def create_app(config: Config = None) -> Flask:
     container.register_singleton('config', app_config)
     container.register_singleton('db_connection', OracleDBConnection(app_config.database))
     container.register_transient('classifier', lambda: ActivityClassifier(app_config.model))
+    
+    # Register backup service
+    backup_service = AzureBlobBackupService()
+    container.register_singleton('backup_service', backup_service)
+    container.register_singleton('auto_backup', AutoBackupManager(backup_service))
     
     # Store container in app context
     app.container = container
@@ -478,6 +484,10 @@ def register_routes(app: Flask) -> None:
             os.makedirs('data', exist_ok=True)
             annotations_df.to_csv(annotations_path, index=False)
             
+            # Auto backup to Azure (if enabled)
+            auto_backup = get_service('auto_backup')
+            auto_backup.on_annotation_saved(annotations_df)
+            
             # Get updated statistics
             from app.active_learning import ActiveLearningService
             al_service = ActiveLearningService()
@@ -522,6 +532,131 @@ def register_routes(app: Flask) -> None:
                 'message': 'Query updated successfully'
             })
             
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Error: {str(e)}'
+            }), 500
+    
+    # Backup management API routes
+    @app.route('/api/backup/status', methods=['GET'])
+    def get_backup_status():
+        """Get backup service status and statistics."""
+        try:
+            backup_service = get_service('backup_service')
+            stats = backup_service.get_backup_statistics()
+            
+            return jsonify({
+                'success': True,
+                'backup_enabled': backup_service.is_enabled(),
+                'statistics': stats
+            })
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Error: {str(e)}'
+            }), 500
+    
+    @app.route('/api/backup/create', methods=['POST'])
+    def create_manual_backup():
+        """Create a manual backup of annotations."""
+        try:
+            data = request.get_json()
+            backup_type = data.get('type', 'manual')
+            milestone_name = data.get('milestone_name', '')
+            description = data.get('description', '')
+            
+            # Load annotations
+            annotations_path = 'data/annotations.csv'
+            if not os.path.exists(annotations_path):
+                return jsonify({
+                    'success': False,
+                    'message': 'No annotations to backup'
+                }), 404
+            
+            annotations_df = pd.read_csv(annotations_path)
+            backup_service = get_service('backup_service')
+            
+            if backup_type == 'milestone' and milestone_name:
+                blob_name = backup_service.create_milestone_backup(
+                    annotations_df,
+                    milestone_name,
+                    description
+                )
+            else:
+                blob_name = backup_service.create_snapshot(
+                    annotations_df,
+                    metadata={'created_by': 'user'},
+                    snapshot_type='manual'
+                )
+            
+            if blob_name:
+                return jsonify({
+                    'success': True,
+                    'message': 'Backup created successfully',
+                    'blob_name': blob_name
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': 'Backup failed or not enabled'
+                }), 500
+                
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Error: {str(e)}'
+            }), 500
+    
+    @app.route('/api/backup/list', methods=['GET'])
+    def list_backups():
+        """List available backups."""
+        try:
+            backup_type = request.args.get('type', None)
+            limit = int(request.args.get('limit', 50))
+            
+            backup_service = get_service('backup_service')
+            backups = backup_service.list_backups(backup_type, limit)
+            
+            return jsonify({
+                'success': True,
+                'backups': backups
+            })
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Error: {str(e)}'
+            }), 500
+    
+    @app.route('/api/backup/restore', methods=['POST'])
+    def restore_backup():
+        """Restore annotations from a backup."""
+        try:
+            data = request.get_json()
+            blob_name = data.get('blob_name')
+            
+            if not blob_name:
+                return jsonify({
+                    'success': False,
+                    'message': 'No blob name provided'
+                }), 400
+            
+            backup_service = get_service('backup_service')
+            restore_path = 'data/annotations_restored.csv'
+            
+            success = backup_service.restore_snapshot(blob_name, restore_path)
+            
+            if success:
+                return jsonify({
+                    'success': True,
+                    'message': f'Backup restored to {restore_path}'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': 'Restore failed'
+                }), 500
+                
         except Exception as e:
             return jsonify({
                 'success': False,
