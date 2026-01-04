@@ -2,6 +2,13 @@
 
 A fine tuning application for classification of legacy IFS activities to new project structure in IFS Cloud. This web application uses advanced active learning with multi-label classification, combining RoBERTa BigBird transformer with tabular features for optimal activity categorization.
 
+## ✨ Key Highlights
+
+- 🚀 **Just Works on Windows**: Zero manual setup - automatic GPU detection, model downloading, and configuration
+- 🎮 **GPU Accelerated**: Automatic CUDA detection and optimization for NVIDIA GPUs (RTX 5070 Ti: 16GB VRAM)
+- 🤖 **HuggingFace Integration**: Models download automatically on first run - no manual file placement needed
+- 💾 **Smart Caching**: Models cached locally for instant subsequent startups
+
 ## Features
 
 - 🗄️ **Oracle Database Integration**: Connect directly to your Oracle database to fetch activity mapping data
@@ -15,6 +22,7 @@ A fine tuning application for classification of legacy IFS activities to new pro
 - 📈 **Model Evaluation**: Performance metrics and confidence scores
 - 🏗️ **Modern Architecture**: Application factory pattern with dependency injection
 - 📋 **Best Practices**: Type hints, configuration management, and DRY principles
+- 🖥️ **Windows 11 Optimized**: Tested and optimized for Windows 11 with uv package manager
 
 ## Data Protection with Azure Backup
 
@@ -118,12 +126,27 @@ See [.github/instructions.md](.github/instructions.md) for detailed documentatio
 
 ## Installation
 
+### 🪟 Windows 11 with GPU Support
+
+**For Windows users with NVIDIA GPUs (like RTX 5070 Ti), we have a comprehensive setup guide:**
+
+👉 **[Windows Setup Guide](WINDOWS_SETUP.md)** 👈
+
+This guide covers:
+- Installing with `uv` package manager
+- PyTorch with CUDA support for your GPU
+- Automatic model downloading from HuggingFace
+- Zero manual configuration needed
+- Everything "just works" on first run
+
+### General Installation
+
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.10 or 3.11 recommended
 - Oracle Database (optional, if using database connection)
-- 4GB+ RAM (8GB+ recommended for training)
-- GPU recommended for faster training (optional)
+- 8GB+ RAM (16GB+ recommended for training)
+- GPU highly recommended for faster training (10-20x speedup)
 
 ### Setup
 
@@ -139,16 +162,42 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. Install dependencies:
+3. **Install PyTorch first (for GPU support):**
+```bash
+# For CUDA 12.1 (RTX 30/40/50 series)
+pip install torch --index-url https://download.pytorch.org/whl/cu121
+
+# For CPU only
+pip install torch
+```
+
+4. Install other dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Configure environment variables:
+5. Configure environment variables:
 ```bash
 cp .env.example .env
 # Edit .env with your database credentials and configuration
 ```
+
+## First Run
+
+When you run the application for the first time:
+
+```bash
+python run.py
+```
+
+**What happens automatically:**
+1. ✅ **GPU Detection**: Automatically detects and configures your GPU (if available)
+2. ✅ **Model Download**: Downloads RoBERTa BigBird model from HuggingFace (~1.5GB)
+3. ✅ **Model Caching**: Saves models in `~/.cache/huggingface/` for instant future startups
+4. ✅ **Optimal Settings**: Configures batch size based on your hardware
+5. ✅ **System Info**: Displays GPU, CUDA version, and recommended settings
+
+**No manual file placement needed!** Models download automatically on first use.
 
 ## Configuration
 

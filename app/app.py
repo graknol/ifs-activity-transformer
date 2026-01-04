@@ -4,13 +4,22 @@ Flask web application factory for IFS Activity Transformer.
 Following application factory pattern with dependency injection.
 Refactored for DRY principles and improved maintainability.
 """
+import logging
 from flask import Flask
 from app.config import Config
 from app.database import OracleDBConnection
 from app.model import ActivityClassifier
 from app.backup_service import AzureBlobBackupService, AutoBackupManager
+from app.model_manager import get_model_manager
 from services.container import ServiceContainer
 from app.routes import register_all_routes
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 def create_app(config: Config = None) -> Flask:
@@ -32,8 +41,17 @@ def create_app(config: Config = None) -> Flask:
     app_config = config or Config.from_env()
     _configure_app(app, app_config)
     
+    # Initialize model manager and preload models
+    logger.info("Initializing model manager...")
+    model_manager = get_model_manager()
+    model_manager.print_system_info()
+    
+    # Preload configured model
+    logger.info(f"Preloading model: {app_config.model.model_name}")
+    model_manager.preload_models([app_config.model.model_name])
+    
     # Create and configure service container
-    container = _create_service_container(app_config)
+    container = _create_service_container(app_config, model_manager)
     app.container = container
     
     # Initialize application state
@@ -41,6 +59,8 @@ def create_app(config: Config = None) -> Flask:
     
     # Register all routes
     register_all_routes(app)
+    
+    logger.info("Application initialization complete!")
     
     return app
 
@@ -58,12 +78,13 @@ def _configure_app(app: Flask, config: Config) -> None:
     app.config['TESTING'] = config.flask.testing
 
 
-def _create_service_container(config: Config) -> ServiceContainer:
+def _create_service_container(config: Config, model_manager) -> ServiceContainer:
     """
     Create and configure the service container with all dependencies.
     
     Args:
         config: Application configuration
+        model_manager: ModelManager instance for GPU/model management
         
     Returns:
         Configured ServiceContainer instance
@@ -73,6 +94,9 @@ def _create_service_container(config: Config) -> ServiceContainer:
     # Register configuration
     container.register_singleton('config', config)
     
+    # Register model manager
+    container.register_singleton('model_manager', model_manager)
+    
     # Register database connection
     container.register_singleton('db_connection', OracleDBConnection(config.database))
     
@@ -80,7 +104,7 @@ def _create_service_container(config: Config) -> ServiceContainer:
     container.register_transient('classifier', lambda: ActivityClassifier(config.model))
     
     # Register backup services
-    backup_service = AzureBlobBackupService()
+    backup_service = AzureBlobBackupService(config.azure)
     container.register_singleton('backup_service', backup_service)
     container.register_singleton('auto_backup', AutoBackupManager(backup_service))
     

@@ -117,11 +117,18 @@ class ActivityClassifier:
         Args:
             num_labels: Number of unique labels/classes
         """
+        from app.model_manager import get_model_manager
+        
         self.model = AutoModelForSequenceClassification.from_pretrained(
             self.model_name,
             num_labels=num_labels,
             problem_type="single_label_classification"
         )
+        
+        # Move model to available device (GPU if available)
+        model_manager = get_model_manager()
+        device = model_manager.get_device()
+        self.model = self.model.to(device)
     
     def train(self, train_dataset: Dataset, val_dataset: Dataset, 
               output_dir: Optional[str] = None) -> Dict:

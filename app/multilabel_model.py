@@ -43,7 +43,7 @@ class MultiLabelActivityClassifier(nn.Module):
         """
         super().__init__()
         
-        # Load pre-trained transformer
+        # Load pre-trained transformer (will use cached version if available)
         self.transformer = AutoModel.from_pretrained(model_name)
         self.transformer_dim = self.transformer.config.hidden_size
         

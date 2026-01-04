@@ -142,6 +142,32 @@ class FlaskConfig:
         )
 
 
+@dataclass
+class AzureConfig:
+    """Azure Blob Storage configuration."""
+    
+    connection_string: Optional[str] = None
+    container_name: str = 'ifs-annotations-backup'
+    backup_enabled: bool = False
+    backup_threshold: int = 10
+    
+    @classmethod
+    def from_env(cls) -> 'AzureConfig':
+        """
+        Create configuration from environment variables.
+        
+        Returns:
+            AzureConfig instance with values from environment
+        """
+        connection_string = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+        return cls(
+            connection_string=connection_string,
+            container_name=os.getenv('AZURE_CONTAINER_NAME', cls.container_name),
+            backup_enabled=connection_string is not None and os.getenv('BACKUP_ENABLED', 'true').lower() == 'true',
+            backup_threshold=get_int_env('AUTO_BACKUP_THRESHOLD', cls.backup_threshold)
+        )
+
+
 class Config:
     """
     Application configuration container.
@@ -155,6 +181,7 @@ class Config:
         self.database = DatabaseConfig.from_env()
         self.model = ModelConfig.from_env()
         self.flask = FlaskConfig.from_env()
+        self.azure = AzureConfig.from_env()
     
     @classmethod
     def from_env(cls) -> 'Config':
@@ -172,6 +199,7 @@ class Config:
             f"Config("
             f"database=<DatabaseConfig>, "
             f"model={self.model}, "
-            f"flask=<FlaskConfig debug={self.flask.debug}>"
+            f"flask=<FlaskConfig debug={self.flask.debug}>, "
+            f"azure=<AzureConfig backup_enabled={self.azure.backup_enabled}>"
             f")"
         )
