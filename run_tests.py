@@ -190,9 +190,11 @@ def run_all_checks(args):
     success &= type_check(args)
     success &= security_check(args)
     
-    # Run tests with coverage
-    args.cov = True
-    success &= run_tests(args)
+    # Run tests with coverage (create a new args object to avoid mutation)
+    import copy
+    test_args = copy.copy(args)
+    test_args.cov = True
+    success &= run_tests(test_args)
     
     if success:
         print("\n" + "="*60)
