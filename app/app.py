@@ -104,7 +104,10 @@ def _create_service_container(config: Config, model_manager) -> ServiceContainer
     container.register_transient('classifier', lambda: ActivityClassifier(config.model))
     
     # Register backup services
-    backup_service = AzureBlobBackupService(config.azure)
+    backup_service = AzureBlobBackupService(
+        connection_string=config.azure.connection_string,
+        container_name=config.azure.container_name
+    )
     container.register_singleton('backup_service', backup_service)
     container.register_singleton('auto_backup', AutoBackupManager(backup_service))
     
