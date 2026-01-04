@@ -10,6 +10,34 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def get_int_env(key: str, default: int) -> int:
+    """
+    Get integer environment variable with default.
+    
+    Args:
+        key: Environment variable name
+        default: Default value if not set
+        
+    Returns:
+        Integer value from environment or default
+    """
+    return int(os.getenv(key, str(default)))
+
+
+def get_float_env(key: str, default: float) -> float:
+    """
+    Get float environment variable with default.
+    
+    Args:
+        key: Environment variable name
+        default: Default value if not set
+        
+    Returns:
+        Float value from environment or default
+    """
+    return float(os.getenv(key, str(default)))
+
+
 @dataclass
 class DatabaseConfig:
     """Database configuration with environment variable defaults."""
@@ -32,7 +60,7 @@ class DatabaseConfig:
             user=os.getenv('ORACLE_USER'),
             password=os.getenv('ORACLE_PASSWORD'),
             host=os.getenv('ORACLE_HOST'),
-            port=int(os.getenv('ORACLE_PORT', '1521')),
+            port=get_int_env('ORACLE_PORT', 1521),
             service=os.getenv('ORACLE_SERVICE')
         )
     
@@ -68,10 +96,10 @@ class ModelConfig:
         """
         return cls(
             model_name=os.getenv('MODEL_NAME', cls.model_name),
-            max_length=int(os.getenv('MAX_LENGTH', str(cls.max_length))),
-            batch_size=int(os.getenv('BATCH_SIZE', str(cls.batch_size))),
-            learning_rate=float(os.getenv('LEARNING_RATE', str(cls.learning_rate))),
-            num_epochs=int(os.getenv('NUM_EPOCHS', str(cls.num_epochs))),
+            max_length=get_int_env('MAX_LENGTH', cls.max_length),
+            batch_size=get_int_env('BATCH_SIZE', cls.batch_size),
+            learning_rate=get_float_env('LEARNING_RATE', cls.learning_rate),
+            num_epochs=get_int_env('NUM_EPOCHS', cls.num_epochs),
             save_dir=os.getenv('SAVE_DIR', cls.save_dir)
         )
     
@@ -110,7 +138,7 @@ class FlaskConfig:
             debug=os.getenv('FLASK_ENV') == 'development',
             testing=os.getenv('TESTING', 'False').lower() == 'true',
             host=os.getenv('FLASK_HOST', cls.host),
-            port=int(os.getenv('FLASK_PORT', str(cls.port)))
+            port=get_int_env('FLASK_PORT', cls.port)
         )
 
 

@@ -332,9 +332,6 @@ def register_routes(app: Flask) -> None:
             }), 500
 
 
-# For backward compatibility and direct execution
-app = None
-
 if __name__ == '__main__':
     print("Starting IFS Activity Transformer...")
     print("Open your browser and navigate to: http://localhost:5000")

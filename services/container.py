@@ -112,6 +112,9 @@ class ServiceProvider:
     This provides a way to create service scopes similar to C#'s IServiceScope,
     useful for request-scoped dependencies in web applications.
     
+    Note: Only services explicitly registered as scoped will be cached within the scope.
+    Singletons and transients behave according to their registration lifetime.
+    
     Example:
         >>> with ServiceProvider(container) as provider:
         ...     db = provider.get_service('db')
@@ -127,6 +130,16 @@ class ServiceProvider:
         """
         self.container = container
         self._scoped_instances: Dict[str, Any] = {}
+        self._scoped_services: set = set()  # Track which services are scoped
+    
+    def register_scoped_service(self, service_type: str) -> None:
+        """
+        Mark a service as scoped for this provider.
+        
+        Args:
+            service_type: Service identifier
+        """
+        self._scoped_services.add(service_type)
     
     def __enter__(self) -> 'ServiceProvider':
         """Enter the service scope."""
@@ -140,17 +153,24 @@ class ServiceProvider:
         """
         Get a service within this scope.
         
+        For scoped services, returns the same instance within this scope.
+        For singletons and transients, delegates to the container.
+        
         Args:
             service_type: Service identifier
             
         Returns:
             The service instance
         """
-        # For scoped services, reuse the same instance within this scope
-        if service_type in self._scoped_instances:
-            return self._scoped_instances[service_type]
+        # For scoped services, cache within this scope
+        if service_type in self._scoped_services:
+            if service_type in self._scoped_instances:
+                return self._scoped_instances[service_type]
+            
+            # Resolve and cache for this scope
+            instance = self.container.resolve(service_type)
+            self._scoped_instances[service_type] = instance
+            return instance
         
-        # Resolve from container
-        instance = self.container.resolve(service_type)
-        self._scoped_instances[service_type] = instance
-        return instance
+        # For non-scoped services, delegate to container
+        return self.container.resolve(service_type)
