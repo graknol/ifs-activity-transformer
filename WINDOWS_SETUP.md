@@ -28,10 +28,10 @@ cd ifs-activity-transformer
 
 ### 3. Install PyTorch with CUDA (One-Time Setup for GPU)
 
-For your RTX 5070 Ti, install PyTorch with CUDA 12.1 support first:
+For your RTX 5070 Ti, install PyTorch with CUDA 13.0 support first:
 
 ```powershell
-uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
 ```
 
 **Verify GPU detection:**
@@ -122,12 +122,12 @@ SYSTEM INFORMATION
 ======================================================================
 
 Python Environment:
-  PyTorch version: 2.1.0+cu121
+  PyTorch version: 2.1.0+cu130
 
 Compute Device:
   Selected device: cuda
   CUDA available: True
-  CUDA version: 12.1
+  CUDA version: 13.0
   cuDNN version: 8902
   GPU count: 1
 
@@ -181,7 +181,7 @@ If you see `CUDA available: False`:
 2. **Reinstall PyTorch with CUDA:**
    ```powershell
    uv pip uninstall torch torchvision torchaudio
-   uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+   uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
    ```
 
 3. **Check CUDA installation:**

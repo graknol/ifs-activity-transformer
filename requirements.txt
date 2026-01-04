@@ -3,7 +3,7 @@ flask>=3.0.0,<4.0.0
 
 # Machine Learning and Transformers
 # NOTE: For GPU support on Windows, install PyTorch separately first:
-#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+#   pip install torch --index-url https://download.pytorch.org/whl/cu130
 # Then install these requirements
 transformers>=4.36.0,<5.0.0
 torch>=2.1.0,<3.0.0

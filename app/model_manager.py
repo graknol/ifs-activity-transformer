@@ -61,7 +61,7 @@ class ModelManager:
         else:
             device = 'cpu'
             logger.info("⚠ No GPU detected, using CPU (training will be slower)")
-            logger.info("  For GPU support, install: pip install torch --index-url https://download.pytorch.org/whl/cu121")
+            logger.info("  For GPU support, install: pip install torch --index-url https://download.pytorch.org/whl/cu130")
         
         return device
     
@@ -193,7 +193,7 @@ class ModelManager:
         else:
             print("  ⚠ No GPU detected")
             print("  To enable GPU support on Windows:")
-            print("    pip install torch --index-url https://download.pytorch.org/whl/cu121")
+            print("    pip install torch --index-url https://download.pytorch.org/whl/cu130")
         
         print(f"\nModel Cache:")
         default_cache = os.path.expanduser("~/.cache/huggingface")

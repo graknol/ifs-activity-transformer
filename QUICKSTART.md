@@ -15,7 +15,7 @@ git clone https://github.com/graknol/ifs-activity-transformer.git
 cd ifs-activity-transformer
 
 # Install PyTorch with CUDA first (for GPU support)
-uv pip install torch --index-url https://download.pytorch.org/whl/cu121
+uv pip install torch --index-url https://download.pytorch.org/whl/cu130
 
 # Automatically create venv and install ALL dependencies!
 uv sync
@@ -36,7 +36,7 @@ copy .env.example .env
 # If you prefer step-by-step control
 uv venv --python 3.11
 .venv\Scripts\activate
-uv pip install torch --index-url https://download.pytorch.org/whl/cu121
+uv pip install torch --index-url https://download.pytorch.org/whl/cu130
 uv pip install -r requirements.txt
 copy .env.example .env
 ```
@@ -88,12 +88,12 @@ SYSTEM INFORMATION
 ======================================================================
 
 Python Environment:
-  PyTorch version: 2.1.0+cu121
+  PyTorch version: 2.1.0+cu130
 
 Compute Device:
   Selected device: cuda
   ✓ GPU detected: NVIDIA GeForce RTX 5070 Ti
-  CUDA version: 12.1
+  CUDA version: 13.0
   GPU memory: 16.00 GB
 
 Model Cache:
@@ -159,7 +159,7 @@ nvidia-smi
 
 # Reinstall PyTorch with CUDA
 uv pip uninstall torch
-uv pip install torch --index-url https://download.pytorch.org/whl/cu121
+uv pip install torch --index-url https://download.pytorch.org/whl/cu130
 
 # Verify
 python -c "import torch; print('CUDA:', torch.cuda.is_available())"

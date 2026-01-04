@@ -43,7 +43,7 @@ class TestModelManager:
         """Test device detection returns cuda when available."""
         with patch.object(model_manager, '_has_gpu', return_value=True):
             with patch('torch.cuda.get_device_name', return_value='NVIDIA RTX 5070 Ti'):
-                with patch('torch.version.cuda', '12.1'):
+                with patch('torch.version.cuda', '13.0'):
                     with patch('torch.cuda.get_device_properties') as mock_props:
                         mock_props.return_value.total_memory = 16 * 1024**3
                         device = model_manager._detect_device()

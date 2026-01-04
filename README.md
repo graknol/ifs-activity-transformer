@@ -167,7 +167,7 @@ cd ifs-activity-transformer
 
 3. Install PyTorch with CUDA (one-time setup for GPU):
 ```powershell
-uv pip install torch --index-url https://download.pytorch.org/whl/cu121
+uv pip install torch --index-url https://download.pytorch.org/whl/cu130
 ```
 
 4. **One command to rule them all:**
@@ -210,8 +210,8 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 3. **Install PyTorch first (for GPU support):**
 ```bash
-# For CUDA 12.1 (RTX 30/40/50 series)
-pip install torch --index-url https://download.pytorch.org/whl/cu121
+# For CUDA 13.0 (RTX 30/40/50 series)
+pip install torch --index-url https://download.pytorch.org/whl/cu130
 
 # For CPU only
 pip install torch
