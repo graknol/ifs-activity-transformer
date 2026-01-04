@@ -21,7 +21,12 @@ def get_int_env(key: str, default: int) -> int:
     Returns:
         Integer value from environment or default
     """
-    return int(os.getenv(key, str(default)))
+    value = os.getenv(key, str(default))
+    # Handle scientific notation by converting through float first
+    try:
+        return int(value)
+    except ValueError:
+        return int(float(value))
 
 
 def get_float_env(key: str, default: float) -> float:

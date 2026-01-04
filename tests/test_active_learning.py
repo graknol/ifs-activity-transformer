@@ -170,7 +170,7 @@ class TestMultiLabelActiveLearning:
     
     def test_multilabel_uncertainty_calculation(self, ml_al_service, multilabel_predictions):
         """Test uncertainty calculation for multi-label predictions."""
-        uncertainty = ml_al_service._calculate_multilabel_uncertainty(multilabel_predictions)
+        uncertainty = ml_al_service.calculate_multilabel_uncertainty(multilabel_predictions)
         
         assert len(uncertainty) == len(multilabel_predictions)
         assert all(u >= 0 for u in uncertainty)

@@ -119,7 +119,16 @@ class ResponseBuilder:
         response = {'success': True, 'message': message}
         if data:
             response.update(data)
-        return jsonify(response), status
+        
+        # Try to use Flask's jsonify if in app context, otherwise return dict
+        try:
+            from flask import current_app
+            if current_app:
+                return jsonify(response), status
+        except (ImportError, RuntimeError):
+            pass
+        
+        return response, status
     
     @staticmethod
     def error(message: str, status: int = 500, details: Optional[Dict[str, Any]] = None) -> Tuple[Any, int]:
@@ -137,7 +146,16 @@ class ResponseBuilder:
         response = {'success': False, 'message': message}
         if details:
             response['details'] = details
-        return jsonify(response), status
+        
+        # Try to use Flask's jsonify if in app context, otherwise return dict
+        try:
+            from flask import current_app
+            if current_app:
+                return jsonify(response), status
+        except (ImportError, RuntimeError):
+            pass
+        
+        return response, status
     
     @staticmethod
     def from_exception(e: Exception, context: str = "", status: int = 500) -> Tuple[Any, int]:

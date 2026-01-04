@@ -79,7 +79,7 @@ class TestResponseBuilder:
         response, status = ResponseBuilder.success("Operation successful")
         
         assert status == 200
-        response_json = response.get_json()
+        response_json = response if isinstance(response, dict) else response.get_json()
         assert response_json['success'] is True
         assert response_json['message'] == "Operation successful"
     
@@ -89,7 +89,7 @@ class TestResponseBuilder:
         response, status = ResponseBuilder.success("Data retrieved", data=data)
         
         assert status == 200
-        response_json = response.get_json()
+        response_json = response if isinstance(response, dict) else response.get_json()
         assert response_json['success'] is True
         assert response_json['count'] == 10
         assert response_json['items'] == ['a', 'b', 'c']
@@ -99,7 +99,7 @@ class TestResponseBuilder:
         response, status = ResponseBuilder.success("Created", status=201)
         
         assert status == 201
-        response_json = response.get_json()
+        response_json = response if isinstance(response, dict) else response.get_json()
         assert response_json['success'] is True
     
     def test_error_response_basic(self):
@@ -107,7 +107,7 @@ class TestResponseBuilder:
         response, status = ResponseBuilder.error("An error occurred")
         
         assert status == 500
-        response_json = response.get_json()
+        response_json = response if isinstance(response, dict) else response.get_json()
         assert response_json['success'] is False
         assert response_json['message'] == "An error occurred"
     
@@ -116,7 +116,7 @@ class TestResponseBuilder:
         response, status = ResponseBuilder.error("Not found", status=404)
         
         assert status == 404
-        response_json = response.get_json()
+        response_json = response if isinstance(response, dict) else response.get_json()
         assert response_json['success'] is False
     
     def test_error_response_with_details(self):
@@ -125,7 +125,7 @@ class TestResponseBuilder:
         response, status = ResponseBuilder.error("Validation failed", status=400, details=details)
         
         assert status == 400
-        response_json = response.get_json()
+        response_json = response if isinstance(response, dict) else response.get_json()
         assert response_json['success'] is False
         assert response_json['details']['field'] == 'email'
     
@@ -135,7 +135,7 @@ class TestResponseBuilder:
         response, status = ResponseBuilder.from_exception(exception, context="Processing data")
         
         assert status == 500
-        response_json = response.get_json()
+        response_json = response if isinstance(response, dict) else response.get_json()
         assert response_json['success'] is False
         assert "Processing data" in response_json['message']
         assert "Invalid input value" in response_json['message']
@@ -146,7 +146,7 @@ class TestResponseBuilder:
         response, status = ResponseBuilder.from_exception(exception)
         
         assert status == 500
-        response_json = response.get_json()
+        response_json = response if isinstance(response, dict) else response.get_json()
         assert "Something went wrong" in response_json['message']
 
 

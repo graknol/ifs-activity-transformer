@@ -68,16 +68,20 @@ class ActiveLearningService:
             uncertainty_scores = np.random.random(len(predictions))
         
         # Determine how many uncertain vs confident samples to show
+        # Cap to available samples
+        n_samples = min(n_samples, len(predictions))
         n_uncertain = int(n_samples * (1 - self.sanity_check_ratio))
         n_confident = n_samples - n_uncertain
         
         # Get indices sorted by uncertainty (high to low)
         sorted_indices = np.argsort(uncertainty_scores)[::-1]
         
-        # Select most uncertain samples
-        uncertain_indices = sorted_indices[:n_uncertain]
+        # Select most uncertain samples (cap to available)
+        uncertain_indices = sorted_indices[:min(n_uncertain, len(predictions))]
         
         # Select some confident samples for sanity checks (low uncertainty)
+        remaining = len(predictions) - len(uncertain_indices)
+        n_confident = min(n_confident, remaining)
         confident_indices = sorted_indices[-n_confident:] if n_confident > 0 else []
         
         # Combine and shuffle so user doesn't know which is which
@@ -96,7 +100,7 @@ class ActiveLearningService:
                 'uncertainty_score': float(uncertainty_scores[idx]),
                 'max_confidence': float(max_conf),
                 'predicted_class': int(pred_class),
-                'is_uncertain': uncertainty_scores[idx] > np.median(uncertainty_scores),
+                'is_uncertain': bool(uncertainty_scores[idx] > np.median(uncertainty_scores)),
                 'probabilities': predictions[idx].tolist()
             })
         
@@ -215,14 +219,16 @@ class MultiLabelActiveLearning:
     Handles uncertainty sampling when each sample can have multiple labels.
     """
     
-    def __init__(self, confidence_threshold: float = 0.5):
+    def __init__(self, confidence_threshold: float = 0.5, sanity_check_ratio: float = 0.1):
         """
         Initialize multi-label active learning.
         
         Args:
             confidence_threshold: Threshold for binary classification per label
+            sanity_check_ratio: Ratio of confident samples to include for validation
         """
         self.confidence_threshold = confidence_threshold
+        self.sanity_check_ratio = sanity_check_ratio
     
     def calculate_multilabel_uncertainty(
         self,
@@ -270,6 +276,9 @@ class MultiLabelActiveLearning:
         Returns:
             List of selected samples with metadata
         """
+        # Ensure we don't request more samples than available
+        n_samples = min(n_samples, len(predictions))
+        
         uncertainty_scores = self.calculate_multilabel_uncertainty(predictions)
         
         # Determine split
@@ -288,13 +297,18 @@ class MultiLabelActiveLearning:
         
         # Build results
         results = []
+        median_uncertainty = np.median(uncertainty_scores)
+        
         for idx in selected_indices:
+            probs = predictions[idx].tolist()
             results.append({
                 'sample_id': sample_ids[idx],
                 'index': int(idx),
                 'uncertainty_score': float(uncertainty_scores[idx]),
-                'predictions': predictions[idx].tolist(),
-                'is_uncertain': uncertainty_scores[idx] > np.median(uncertainty_scores)
+                'predictions': probs,
+                'label_confidences': probs,
+                'predicted_labels': np.where(predictions[idx] >= self.confidence_threshold)[0].tolist(),
+                'is_uncertain': bool(uncertainty_scores[idx] > median_uncertainty)
             })
         
         return results

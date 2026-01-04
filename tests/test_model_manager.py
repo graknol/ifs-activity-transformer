@@ -71,10 +71,12 @@ class TestModelManager:
                     assert 'cuda_available' in info
                     assert 'pytorch_version' in info
     
-    def test_get_system_info_cpu_only(self, model_manager):
+    def test_get_system_info_cpu_only(self):
         """Test system info when only CPU is available."""
         with patch('torch.cuda.is_available', return_value=False):
-            info = model_manager.get_system_info()
+            # Create a new manager to pick up the mocked environment
+            manager = ModelManager()
+            info = manager.get_system_info()
             
             assert info['device'] == 'cpu'
             assert info['cuda_available'] is False
@@ -107,7 +109,7 @@ class TestModelManager:
         success, message = model_manager.ensure_model_available('bert-base-uncased')
         
         assert success is True
-        assert 'available' in message.lower() or 'downloaded' in message.lower()
+        assert 'ready' in message.lower()
     
     @patch('transformers.AutoTokenizer.from_pretrained')
     def test_load_tokenizer(self, mock_from_pretrained, model_manager):

@@ -167,6 +167,102 @@ class ModelManager:
         
         return 8  # Default
     
+    def get_system_info(self) -> Dict[str, any]:
+        """
+        Get comprehensive system information.
+        
+        Returns:
+            Dictionary with system information
+        """
+        info = {
+            'device': self.device,
+            'pytorch_version': torch.__version__,
+            'cuda_available': torch.cuda.is_available(),
+        }
+        
+        if torch.cuda.is_available():
+            info['cuda_version'] = torch.version.cuda
+            info['cudnn_version'] = torch.backends.cudnn.version()
+            info['gpu_count'] = torch.cuda.device_count()
+            info['gpu_name'] = torch.cuda.get_device_name(0)
+            props = torch.cuda.get_device_properties(0)
+            info['gpu_memory_gb'] = props.total_memory / 1e9
+            info['compute_capability'] = f"{props.major}.{props.minor}"
+        else:
+            info['cuda_version'] = None
+            
+        return info
+    
+    def recommend_batch_size(self, model_size: str = 'base') -> int:
+        """
+        Recommend batch size based on available hardware and model size.
+        
+        Args:
+            model_size: Model size hint ('tiny', 'base', 'large')
+            
+        Returns:
+            Recommended batch size
+        """
+        if self.device == 'cpu':
+            return 4 if model_size == 'tiny' else 2
+        
+        if self._has_gpu():
+            gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory / 1e9
+            
+            # Adjust for model size
+            if model_size == 'large':
+                multiplier = 0.5
+            elif model_size == 'tiny':
+                multiplier = 2.0
+            else:  # base
+                multiplier = 1.0
+            
+            if gpu_memory_gb >= 24:
+                return int(16 * multiplier)
+            elif gpu_memory_gb >= 12:
+                return int(12 * multiplier)
+            elif gpu_memory_gb >= 8:
+                return int(8 * multiplier)
+            else:
+                return int(4 * multiplier)
+        
+        return 8
+    
+    def load_tokenizer(self, model_name: str):
+        """
+        Load a tokenizer from HuggingFace.
+        
+        Args:
+            model_name: HuggingFace model identifier
+            
+        Returns:
+            Tokenizer instance
+        """
+        logger.info(f"Loading tokenizer: {model_name}")
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_name,
+            cache_dir=self.cache_dir
+        )
+        return tokenizer
+    
+    def load_model(self, model_name: str):
+        """
+        Load a model from HuggingFace.
+        
+        Args:
+            model_name: HuggingFace model identifier
+            
+        Returns:
+            Model instance
+        """
+        logger.info(f"Loading model: {model_name}")
+        model = AutoModel.from_pretrained(
+            model_name,
+            cache_dir=self.cache_dir
+        )
+        model.to(self.device)
+        return model
+    
     def print_system_info(self):
         """Print comprehensive system information for debugging."""
         print("\n" + "=" * 70)
