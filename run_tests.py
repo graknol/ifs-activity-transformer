@@ -43,7 +43,7 @@ def run_tests(args):
         cmd += " --cov=app --cov=services --cov-report=html --cov-report=term-missing"
     
     if args.fast:
-        cmd += ' -m "not slow"'
+        cmd += ' -m "not slow and not integration"'
     
     if args.verbose:
         cmd += " -v"
@@ -263,11 +263,10 @@ def main():
     
     args = parser.parse_args()
     
-    # If no arguments provided, run tests by default
-    if len(sys.argv) == 1:
-        args.test = True
-    
     success = True
+    
+    # Handle default behavior: run tests if no arguments provided
+    no_args = len(sys.argv) == 1
     
     if args.clean:
         success &= clean(args)
@@ -289,7 +288,8 @@ def main():
     
     if args.all:
         success &= run_all_checks(args)
-    elif args.test or args.cov or args.fast:
+    elif args.test or args.cov or args.fast or no_args:
+        # Run tests if explicitly requested or if no arguments provided
         success &= run_tests(args)
     
     sys.exit(0 if success else 1)
