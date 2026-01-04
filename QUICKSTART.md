@@ -9,22 +9,35 @@ Get up and running with IFS Activity Transformer in 5 minutes.
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-### 2. Clone and Setup
+### 2. Clone and Setup (Automatic with uv sync!)
 ```powershell
 git clone https://github.com/graknol/ifs-activity-transformer.git
 cd ifs-activity-transformer
 
-# Create virtual environment
-uv venv --python 3.11
-.venv\Scripts\activate
-
-# Install PyTorch with CUDA (for GPU support)
+# Install PyTorch with CUDA first (for GPU support)
 uv pip install torch --index-url https://download.pytorch.org/whl/cu121
 
-# Install dependencies
-uv pip install -r requirements.txt
+# Automatically create venv and install ALL dependencies!
+uv sync
 
 # Configure
+copy .env.example .env
+```
+
+**That's it!** `uv sync` automatically:
+- ✅ Creates a virtual environment (`.venv`)
+- ✅ Installs Python 3.11 (specified in `.python-version`)
+- ✅ Installs all dependencies from `pyproject.toml`
+- ✅ Installs dev/test dependencies
+- ✅ Creates a lockfile (`uv.lock`) for reproducible builds
+
+### Alternative: Manual Setup
+```powershell
+# If you prefer step-by-step control
+uv venv --python 3.11
+.venv\Scripts\activate
+uv pip install torch --index-url https://download.pytorch.org/whl/cu121
+uv pip install -r requirements.txt
 copy .env.example .env
 ```
 
@@ -36,14 +49,18 @@ MODEL_NAME=google/bigbird-roberta-base
 BATCH_SIZE=12
 ```
 
-### 4. Run!
+### 4. Activate Environment and Run!
 ```powershell
+# Activate the virtual environment created by uv sync
+.venv\Scripts\activate
+
+# Run the application
 python run.py
 ```
 
 Open browser: **http://localhost:5000**
 
-## Alternative: Automated Setup (Windows)
+## Alternative: Automated Setup Script (Windows)
 
 Just run:
 ```powershell

@@ -10,7 +10,7 @@ Complete guide for running this application on Windows 11 with GPU support (RTX 
 - **32GB RAM** (you have this - perfect for training!)
 - **~10GB free disk space** (for models and dependencies)
 
-## Quick Start (Recommended)
+## Quick Start with uv sync (Recommended - One Command Setup!)
 
 ### 1. Install uv (Python Package Manager)
 
@@ -26,22 +26,11 @@ git clone https://github.com/graknol/ifs-activity-transformer.git
 cd ifs-activity-transformer
 ```
 
-### 3. Create Virtual Environment with uv
+### 3. Install PyTorch with CUDA (One-Time Setup for GPU)
+
+For your RTX 5070 Ti, install PyTorch with CUDA 12.1 support first:
 
 ```powershell
-# Create a virtual environment with Python 3.11
-uv venv --python 3.11
-
-# Activate the virtual environment
-.venv\Scripts\activate
-```
-
-### 4. Install PyTorch with CUDA Support (IMPORTANT!)
-
-For your RTX 5070 Ti, you need PyTorch with CUDA 12.1 support:
-
-```powershell
-# Install PyTorch with CUDA 12.1
 uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 ```
 
@@ -56,21 +45,26 @@ CUDA Available: True
 GPU: NVIDIA GeForce RTX 5070 Ti
 ```
 
-### 5. Install Application Dependencies
+### 4. Automatic Environment Setup (Magic Command!)
 
 ```powershell
-# Install all other dependencies
-uv pip install -r requirements.txt
+# This ONE command does EVERYTHING:
+# - Creates .venv with Python 3.11 (from .python-version)
+# - Installs all dependencies (from pyproject.toml)
+# - Installs dev/test tools
+# - Creates uv.lock for reproducible builds
+uv sync
 ```
 
-This will install:
-- HuggingFace Transformers (for RoBERTa/BigBird models)
-- Flask (web framework)
-- Azure Storage (for backups)
-- Oracle DB connector
-- And all other dependencies
+**That's it!** No need to manually:
+- Create virtual environments
+- Install requirements.txt
+- Manage dependencies
+- Track versions
 
-### 6. Configure Environment Variables
+`uv sync` handles everything automatically based on `pyproject.toml`!
+
+### 5. Configure Environment Variables
 
 ```powershell
 # Copy the example environment file

@@ -150,6 +150,52 @@ This guide covers:
 
 ### Setup
 
+#### Option 1: Automatic Setup with uv (Recommended for Windows 11)
+
+**Best for your setup (Windows 11 + uv + RTX 5070 Ti):**
+
+1. Install uv package manager:
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+2. Clone the repository:
+```powershell
+git clone https://github.com/graknol/ifs-activity-transformer.git
+cd ifs-activity-transformer
+```
+
+3. Install PyTorch with CUDA (one-time setup for GPU):
+```powershell
+uv pip install torch --index-url https://download.pytorch.org/whl/cu121
+```
+
+4. **One command to rule them all:**
+```powershell
+uv sync
+```
+
+**That's it!** `uv sync` automatically:
+- ✅ Creates virtual environment with Python 3.11 (from `.python-version`)
+- ✅ Installs all dependencies from `pyproject.toml`
+- ✅ Installs dev/test tools
+- ✅ Creates `uv.lock` for reproducible builds
+- ✅ No manual dependency management needed!
+
+5. Configure environment:
+```powershell
+copy .env.example .env
+# Edit .env with your settings
+```
+
+6. Run:
+```powershell
+.venv\Scripts\activate  # Activate the environment created by uv sync
+python run.py
+```
+
+#### Option 2: Manual Setup
+
 1. Clone the repository:
 ```bash
 git clone https://github.com/graknol/ifs-activity-transformer.git
