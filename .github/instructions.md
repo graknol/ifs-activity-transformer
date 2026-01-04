@@ -3,12 +3,106 @@
 This document outlines standardized patterns and best practices for Python development in this project, designed to maximize code quality, maintainability, and AI efficiency.
 
 ## Table of Contents
-1. [Dependency Injection](#dependency-injection)
-2. [Project Structure](#project-structure)
-3. [Design Patterns](#design-patterns)
-4. [Configuration Management](#configuration-management)
-5. [Testing Patterns](#testing-patterns)
-6. [Code Quality Standards](#code-quality-standards)
+1. [Code Organization & DRY Principles](#code-organization--dry-principles)
+2. [Dependency Injection](#dependency-injection)
+3. [Project Structure](#project-structure)
+4. [Design Patterns](#design-patterns)
+5. [Configuration Management](#configuration-management)
+6. [Testing Patterns](#testing-patterns)
+7. [Code Quality Standards](#code-quality-standards)
+
+---
+
+## Code Organization & DRY Principles
+
+### Refactoring Achievement
+The codebase has been refactored following DRY (Don't Repeat Yourself) principles with significant improvements:
+
+- **83% reduction** in main application file (678 → 116 lines)
+- **Modular routes**: Organized by feature area for better maintainability
+- **Centralized utilities**: Common operations extracted to reusable components
+- **Consistent patterns**: Unified approach to error handling and responses
+
+### Key Utilities
+
+#### DataManager
+Centralized file operations to eliminate duplication:
+
+```python
+from app.utils import DataManager
+
+# Load training data (handles missing files gracefully)
+df = DataManager.load_training_data()
+
+# Save annotations
+DataManager.save_annotations(annotations_df)
+
+# Standard paths are centralized
+DataManager.TRAINING_DATA_PATH  # 'data/training_data.csv'
+DataManager.ANNOTATIONS_PATH    # 'data/annotations.csv'
+```
+
+#### ResponseBuilder
+Consistent API responses throughout the application:
+
+```python
+from app.utils import ResponseBuilder
+
+# Success response
+return ResponseBuilder.success('Operation completed', {'data': result})
+
+# Error response
+return ResponseBuilder.error('Invalid input', status=400)
+
+# From exception
+return ResponseBuilder.from_exception(e, "Operation context")
+```
+
+#### FileValidator
+Common validation logic:
+
+```python
+from app.utils import FileValidator
+
+# Validate CSV upload
+is_valid, error_msg = FileValidator.validate_csv_upload(file)
+
+# Check file exists
+exists, error_msg = FileValidator.check_file_exists(path, "training data")
+```
+
+### Modular Route Organization
+
+Routes are organized by feature area in separate modules:
+
+```python
+app/routes/
+├── __init__.py        # Registers all routes
+├── pages.py           # HTML page routes
+├── database.py        # Database operations
+├── training.py        # Model training
+├── prediction.py      # Predictions
+├── annotation.py      # Active learning annotation
+└── backup.py          # Azure backup management
+```
+
+Each route module:
+- Has a single responsibility
+- Uses utilities for common operations
+- Returns consistent responses
+- Handles errors gracefully
+
+### DRY Checklist
+
+When adding new features, ensure:
+- [ ] Common operations use utilities (DataManager, ResponseBuilder, etc.)
+- [ ] File paths use DataManager constants
+- [ ] API responses use ResponseBuilder
+- [ ] Validation uses FileValidator
+- [ ] Route logic is in appropriate route module
+- [ ] No duplicate error handling patterns
+- [ ] No duplicate data loading/saving code
+- [ ] Configuration uses type-safe dataclasses
 
 ---
 

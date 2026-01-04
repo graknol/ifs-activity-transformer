@@ -69,11 +69,50 @@ The application implements a sophisticated **two-phase active learning approach*
 
 This project follows Python best practices and design patterns similar to C#'s IServiceCollection:
 
-- **Application Factory Pattern**: Creates app instances with proper configuration
+### Clean Architecture Principles
+- **Application Factory Pattern**: Creates app instances with proper configuration (116 lines vs 678 lines before refactoring)
 - **Dependency Injection**: Service container for managing dependencies
 - **Configuration Management**: Type-safe configuration with dataclasses
+- **Modular Routes**: Organized by feature area (pages, database, training, prediction, annotation, backup)
+- **DRY Utilities**: Centralized common operations (DataManager, ResponseBuilder, FileValidator)
 - **Separation of Concerns**: Clear separation between routes, services, and data access
 - **Testability**: Easy to test with mock services
+
+### Project Structure
+```
+app/
+├── __init__.py
+├── app.py                 # Application factory (116 lines - refactored!)
+├── config.py              # Type-safe configuration
+├── database.py            # Oracle DB repository
+├── model.py               # RoBERTa classifier service
+├── active_learning.py     # Uncertainty sampling service
+├── multilabel_model.py    # Hybrid multi-label classifier
+├── backup_service.py      # Azure Blob backup service
+├── utils.py               # DRY utilities (NEW - 258 lines)
+├── routes/                # Modular routes (NEW)
+│   ├── __init__.py       # Route registration
+│   ├── pages.py          # HTML page routes
+│   ├── database.py       # Database API routes
+│   ├── training.py       # Training API routes
+│   ├── prediction.py     # Prediction API routes
+│   ├── annotation.py     # Annotation API routes
+│   └── backup.py         # Backup API routes
+├── static/               # CSS, JavaScript
+└── templates/            # HTML templates
+
+services/
+├── __init__.py
+└── container.py          # DI container implementation
+```
+
+### DRY Improvements
+- **83% reduction** in main app.py (678 → 116 lines)
+- **Eliminated duplication**: Common patterns extracted to utilities
+- **Centralized data management**: DataManager class handles all file operations
+- **Unified response building**: ResponseBuilder ensures consistent API responses
+- **Reusable validation**: FileValidator for common file checks
+- **Modular routes**: Each feature area has its own route module
 
 See [.github/instructions.md](.github/instructions.md) for detailed documentation on patterns and practices.
 
