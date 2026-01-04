@@ -160,10 +160,18 @@ class AzureConfig:
             AzureConfig instance with values from environment
         """
         connection_string = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+        # Only enable backup if connection string is set AND user hasn't explicitly disabled it
+        backup_enabled_env = os.getenv('BACKUP_ENABLED')
+        if backup_enabled_env is not None:
+            backup_enabled = backup_enabled_env.lower() == 'true'
+        else:
+            # Default: enable if connection string is present
+            backup_enabled = connection_string is not None
+            
         return cls(
             connection_string=connection_string,
             container_name=os.getenv('AZURE_CONTAINER_NAME', cls.container_name),
-            backup_enabled=connection_string is not None and os.getenv('BACKUP_ENABLED', 'true').lower() == 'true',
+            backup_enabled=backup_enabled,
             backup_threshold=get_int_env('AUTO_BACKUP_THRESHOLD', cls.backup_threshold)
         )
 

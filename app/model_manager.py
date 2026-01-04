@@ -49,7 +49,7 @@ class ModelManager:
         Returns:
             Device string ('cuda' or 'cpu')
         """
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and torch.cuda.device_count() > 0:
             device = 'cuda'
             logger.info(f"✓ GPU detected: {torch.cuda.get_device_name(0)}")
             logger.info(f"  CUDA version: {torch.version.cuda}")
@@ -149,7 +149,7 @@ class ModelManager:
             return 4  # Smaller batch size for CPU
         
         # GPU - check memory
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and torch.cuda.device_count() > 0:
             gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory / 1e9
             
             if gpu_memory_gb >= 24:  # High-end GPU
