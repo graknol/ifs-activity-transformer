@@ -218,3 +218,7 @@ app/main_level_execution.csv
 app/sub_lvl1_description.csv
 data/bootstrap_annotated.json
 data/bootstrap_export_20260105_010318.json
+data/pending_annotations.json
+data/training_history.json
+models/model_20260105_013702/labels.json
+models/model_20260105_013702/training_config.json

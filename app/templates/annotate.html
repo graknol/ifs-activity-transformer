@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
         .annotation-container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
         
@@ -22,170 +22,181 @@
         .activity-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             margin-bottom: 1.5rem;
             padding-bottom: 1rem;
             border-bottom: 2px solid #e9ecef;
         }
         
-        .activity-id {
-            font-size: 0.9rem;
+        .activity-meta {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            font-size: 0.85rem;
             color: #666;
         }
         
-        .confidence-badge {
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: bold;
-        }
-        
-        .confidence-high {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        
-        .confidence-low {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        
-        .confidence-medium {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-        
-        .activity-description {
-            background-color: #f8f9fa;
-            padding: 1.5rem;
-            border-radius: 6px;
-            margin-bottom: 1.5rem;
-            border-left: 4px solid #667eea;
-        }
-        
-        .activity-description h4 {
-            margin-top: 0;
-            color: #2c3e50;
-        }
-        
-        .activity-text {
-            font-size: 1.1rem;
-            line-height: 1.6;
-            color: #333;
-        }
-        
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .feature-item {
+        .activity-meta span {
             background: #f8f9fa;
-            padding: 1rem;
-            border-radius: 6px;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
         }
         
-        .feature-label {
-            font-size: 0.85rem;
-            color: #666;
-            margin-bottom: 0.25rem;
-        }
-        
-        .feature-value {
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-        
-        .categories-section {
+        .activity-description-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
             margin-bottom: 1.5rem;
         }
         
-        .categories-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 1rem;
+        .activity-description-box h4 {
+            margin: 0 0 0.5rem 0;
+            opacity: 0.9;
         }
         
-        .category-checkbox {
+        .activity-description-text {
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+        
+        /* Multi-Label Annotation Grid */
+        .label-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        @media (max-width: 900px) {
+            .label-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .label-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.25rem;
+            border: 2px solid #e9ecef;
+        }
+        
+        .label-section h4 {
+            margin: 0 0 1rem 0;
+            color: #333;
             display: flex;
             align-items: center;
-            padding: 1rem;
-            background: #f8f9fa;
-            border-radius: 6px;
-            border: 2px solid transparent;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .category-checkbox:hover {
-            background: #e9ecef;
-        }
-        
-        .category-checkbox.selected {
-            background: #667eea;
-            color: white;
-            border-color: #5568d3;
-        }
-        
-        .category-checkbox input[type="checkbox"] {
-            margin-right: 0.75rem;
-            transform: scale(1.3);
-            cursor: pointer;
-        }
-        
-        .category-label {
-            font-weight: 500;
-            cursor: pointer;
-        }
-        
-        .model-prediction {
-            background: #e7f3ff;
-            padding: 1rem;
-            border-radius: 6px;
-            margin-bottom: 1.5rem;
-            border-left: 4px solid #0066cc;
-        }
-        
-        .model-prediction h4 {
-            margin-top: 0;
-            color: #0066cc;
-        }
-        
-        .prediction-tags {
-            display: flex;
-            flex-wrap: wrap;
             gap: 0.5rem;
         }
         
-        .prediction-tag {
-            padding: 0.5rem 1rem;
-            background: #0066cc;
-            color: white;
-            border-radius: 20px;
-            font-size: 0.9rem;
+        .label-section h4 .icon {
+            font-size: 1.2rem;
         }
         
-        .action-buttons {
+        .label-options {
             display: flex;
-            gap: 1rem;
-            justify-content: space-between;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
         }
         
-        .progress-indicator {
-            text-align: center;
-            padding: 1rem;
-            background: #f8f9fa;
+        .label-option {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: white;
+            border: 2px solid #e0e0e0;
             border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .label-option:hover {
+            border-color: #667eea;
+            background: #f5f5ff;
+        }
+        
+        .label-option.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+        
+        .label-option input[type="radio"] {
+            margin-right: 0.75rem;
+            transform: scale(1.2);
+        }
+        
+        .label-option.selected input[type="radio"] {
+            accent-color: white;
+        }
+        
+        /* Model suggestion highlight */
+        .label-option.suggested {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .label-option.suggested::after {
+            content: '🤖 Suggested';
+            margin-left: auto;
+            font-size: 0.75rem;
+            background: #28a745;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 10px;
+        }
+        
+        .label-option.selected.suggested {
+            background: #667eea;
+        }
+        
+        .label-option.selected.suggested::after {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        /* Context features */
+        .context-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: #fff3cd;
+            border-radius: 8px;
+        }
+        
+        .context-feature {
+            text-align: center;
+        }
+        
+        .context-feature .label {
+            font-size: 0.75rem;
+            color: #856404;
+            text-transform: uppercase;
+        }
+        
+        .context-feature .value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #333;
+            word-break: break-word;
+        }
+        
+        /* Progress bar */
+        .progress-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             margin-bottom: 2rem;
         }
         
         .progress-bar-container {
             background: #e9ecef;
-            height: 20px;
-            border-radius: 10px;
+            height: 24px;
+            border-radius: 12px;
             overflow: hidden;
             margin: 1rem 0;
         }
@@ -194,28 +205,115 @@
             background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
             height: 100%;
             transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.85rem;
         }
         
-        .sql-editor {
-            margin-bottom: 2rem;
+        .progress-stats {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
         }
         
-        .sql-editor textarea {
-            width: 100%;
-            min-height: 150px;
-            font-family: 'Courier New', monospace;
-            padding: 1rem;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+        .progress-stat .number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
         }
         
-        .skip-btn {
-            background-color: #6c757d;
+        .progress-stat .label {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        /* Action buttons */
+        .action-buttons {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 2px solid #e9ecef;
+            margin-top: 1rem;
+        }
+        
+        .btn-skip {
+            background: #6c757d;
             color: white;
         }
         
-        .skip-btn:hover {
-            background-color: #5a6268;
+        .btn-skip:hover {
+            background: #5a6268;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        /* Notes field */
+        .notes-section {
+            margin-bottom: 1rem;
+        }
+        
+        .notes-section textarea {
+            width: 100%;
+            min-height: 60px;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            resize: vertical;
+        }
+        
+        /* Quick filters */
+        .quick-filters {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .quick-filter {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            background: #e9ecef;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .quick-filter:hover {
+            background: #dee2e6;
+        }
+        
+        /* Keyboard shortcuts hint */
+        .shortcuts-hint {
+            font-size: 0.8rem;
+            color: #666;
+            text-align: center;
+            margin-top: 1rem;
+        }
+        
+        .shortcuts-hint kbd {
+            background: #e9ecef;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .empty-state h3 {
+            color: #28a745;
         }
     </style>
 </head>
@@ -236,140 +334,532 @@
     </nav>
 
     <div class="container annotation-container">
-        <h2>Activity Annotation</h2>
-        
-        <div class="progress-indicator">
+        <h2>🏷️ Activity Annotation</h2>
+        <p>Classify activities by selecting the correct label for each dimension: <strong>Phase</strong>, <strong>Discipline</strong>, <strong>Work Type</strong>, and <strong>Location</strong>.</p>
+
+        <!-- Progress Section -->
+        <div class="progress-section">
             <h3>Annotation Progress</h3>
             <div class="progress-bar-container">
-                <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%"></div>
+                <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%">0%</div>
             </div>
-            <p><strong><span id="labeled-count">0</span></strong> of <strong><span id="total-count">0</span></strong> activities labeled (<span id="completion-rate">0</span>%)</p>
-            
-            <!-- Backup Status -->
-            <div id="backup-status" style="margin-top: 1rem; padding: 0.75rem; background: #d4edda; border-radius: 6px; display: none;">
-                <p style="margin: 0; color: #155724;">
-                    <strong>☁️ Azure Backup:</strong> <span id="backup-status-text">Enabled</span> | 
-                    Last backup: <span id="last-backup-time">Never</span>
-                </p>
+            <div class="progress-stats">
+                <div class="progress-stat">
+                    <div class="number" id="annotated-count">0</div>
+                    <div class="label">Annotated</div>
+                </div>
+                <div class="progress-stat">
+                    <div class="number" id="total-count">0</div>
+                    <div class="label">Total</div>
+                </div>
+                <div class="progress-stat">
+                    <div class="number" id="session-count">0</div>
+                    <div class="label">This Session</div>
+                </div>
+                <div class="progress-stat">
+                    <div class="number" id="remaining-count">0</div>
+                    <div class="label">Remaining</div>
+                </div>
             </div>
-            
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading-state" class="card">
+            <p style="text-align: center;">⏳ Loading activities...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="empty-state" style="display: none;">
+            <h3>🎉 All Done!</h3>
+            <p>You've annotated all available activities.</p>
             <div style="margin-top: 1rem;">
-                <button class="btn btn-secondary" onclick="createManualBackup()" style="font-size: 0.9rem;">
-                    💾 Create Backup Now
-                </button>
-                <button class="btn btn-secondary" onclick="showBackupManager()" style="font-size: 0.9rem;">
-                    📂 Manage Backups
-                </button>
+                <a href="/train" class="btn btn-primary">Train Model →</a>
+                <button class="btn btn-secondary" onclick="loadMoreSamples()">Load More Samples</button>
             </div>
         </div>
 
-        <!-- Backup Manager Modal (initially hidden) -->
-        <div id="backup-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto;">
-            <div style="max-width: 800px; margin: 50px auto; background: white; border-radius: 8px; padding: 2rem;">
-                <h3>Backup Manager</h3>
-                
-                <div style="margin: 1.5rem 0;">
-                    <h4>Create Milestone Backup</h4>
-                    <input type="text" id="milestone-name" placeholder="Milestone name (e.g., After 100 annotations)" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;">
-                    <textarea id="milestone-desc" placeholder="Description (optional)" style="width: 100%; padding: 0.5rem; min-height: 60px;"></textarea>
-                    <button class="btn btn-primary" onclick="createMilestoneBackup()">Create Milestone</button>
-                </div>
-                
-                <div style="margin: 1.5rem 0;">
-                    <h4>Available Backups</h4>
-                    <div id="backup-list" style="max-height: 300px; overflow-y: auto;">
-                        <p>Loading backups...</p>
-                    </div>
-                </div>
-                
-                <button class="btn" onclick="closeBackupManager()">Close</button>
-            </div>
-        </div>
-
-        <!-- SQL Query Editor (Collapsible) -->
-        <div class="card">
-            <h3 onclick="toggleSqlEditor()" style="cursor: pointer;">
-                🔧 SQL Query Configuration <span id="sql-toggle">▼</span>
-            </h3>
-            <div id="sql-editor-section" class="sql-editor" style="display: none;">
-                <p><small>Modify the SQL query to include additional features or filters</small></p>
-                <textarea id="sql-query" placeholder="Enter SQL query...">
-SELECT 
-    activity_id,
-    activity_name,
-    activity_description,
-    hierarchy_level,
-    COUNT(DISTINCT jobcard_id) as num_jobcards,
-    COUNT(DISTINCT procurement_line_id) as num_procurement_lines,
-    SUM(expense_amount) as total_expenses
-FROM activities
-LEFT JOIN jobcards USING (activity_id)
-LEFT JOIN procurement_lines USING (activity_id)
-LEFT JOIN expenses USING (activity_id)
-GROUP BY activity_id, activity_name, activity_description, hierarchy_level
-                </textarea>
-                <button class="btn btn-secondary" onclick="updateQuery()">Update Query</button>
-            </div>
-        </div>
-
-        <!-- Current Activity -->
+        <!-- Activity Card -->
         <div id="activity-card" class="activity-card" style="display: none;">
+            <!-- Header -->
             <div class="activity-header">
                 <div>
-                    <h3 id="activity-name">Activity Name</h3>
-                    <p class="activity-id">ID: <span id="activity-id">-</span></p>
-                </div>
-                <div>
-                    <span id="confidence-badge" class="confidence-badge">Uncertainty: -</span>
-                </div>
-            </div>
-
-            <div class="activity-description">
-                <h4>Description</h4>
-                <p id="activity-text" class="activity-text">-</p>
-            </div>
-
-            <div class="features-grid" id="features-grid">
-                <!-- Features will be populated dynamically -->
-            </div>
-
-            <div class="model-prediction">
-                <h4>🤖 Model Prediction</h4>
-                <div id="prediction-tags" class="prediction-tags">
-                    <!-- Prediction tags will be populated -->
-                </div>
-                <p style="margin-top: 0.5rem;"><small>Confidence: <span id="model-confidence">-</span>%</small></p>
-            </div>
-
-            <div class="categories-section">
-                <h4>Select Categories</h4>
-                <p><small>Choose all categories that apply to this activity</small></p>
-                <div class="categories-grid" id="categories-grid">
-                    <!-- Category checkboxes will be populated -->
+                    <h3 id="activity-name" style="margin: 0;">Loading...</h3>
+                    <div class="activity-meta">
+                        <span>SEQ: <strong id="activity-seq">-</strong></span>
+                        <span>Project: <strong id="project-id">-</strong></span>
+                        <span>Activity: <strong id="activity-no">-</strong></span>
+                        <span id="activity-index-display">1 of 100</span>
+                    </div>
                 </div>
             </div>
 
+            <!-- Activity Description -->
+            <div class="activity-description-box">
+                <h4>📝 Activity Description</h4>
+                <p id="activity-description" class="activity-description-text">-</p>
+            </div>
+
+            <!-- Context Features -->
+            <div class="context-features">
+                <div class="context-feature">
+                    <div class="label">Discipline Code</div>
+                    <div class="value" id="discipline-code">-</div>
+                </div>
+                <div class="context-feature">
+                    <div class="label">Phase Prefix</div>
+                    <div class="value" id="phase-prefix">-</div>
+                </div>
+                <div class="context-feature">
+                    <div class="label">Sub-Project</div>
+                    <div class="value" id="sub-project-desc">-</div>
+                </div>
+                <div class="context-feature">
+                    <div class="label">Project Category</div>
+                    <div class="value" id="project-category">-</div>
+                </div>
+                <div class="context-feature">
+                    <div class="label">Status</div>
+                    <div class="value" id="activity-status">-</div>
+                </div>
+            </div>
+
+            <!-- Multi-Label Annotation Grid -->
+            <div class="label-grid">
+                <!-- PHASE Label -->
+                <div class="label-section" id="phase-section">
+                    <h4><span class="icon">📅</span> Phase</h4>
+                    <div class="quick-filters">
+                        <button class="quick-filter" onclick="filterOptions('phase', '')">All</button>
+                        <button class="quick-filter" onclick="filterOptions('phase', 'FEED')">FEED</button>
+                        <button class="quick-filter" onclick="filterOptions('phase', 'Construction')">Construction</button>
+                        <button class="quick-filter" onclick="filterOptions('phase', 'Engineering')">Engineering</button>
+                    </div>
+                    <div class="label-options" id="phase-options">
+                        <!-- Options populated by JS -->
+                    </div>
+                </div>
+
+                <!-- DISCIPLINE Label -->
+                <div class="label-section" id="discipline-section">
+                    <h4><span class="icon">🔧</span> Discipline</h4>
+                    <div class="quick-filters">
+                        <button class="quick-filter" onclick="filterOptions('discipline', '')">All</button>
+                        <button class="quick-filter" onclick="filterOptions('discipline', 'Piping')">Piping</button>
+                        <button class="quick-filter" onclick="filterOptions('discipline', 'Electrical')">Electrical</button>
+                        <button class="quick-filter" onclick="filterOptions('discipline', 'Management')">Mgmt</button>
+                    </div>
+                    <div class="label-options" id="discipline-options">
+                        <!-- Options populated by JS -->
+                    </div>
+                </div>
+
+                <!-- WORK_TYPE Label -->
+                <div class="label-section" id="worktype-section">
+                    <h4><span class="icon">⚙️</span> Work Type</h4>
+                    <div class="quick-filters">
+                        <button class="quick-filter" onclick="filterOptions('worktype', '')">All</button>
+                        <button class="quick-filter" onclick="filterOptions('worktype', 'Engineering')">Engineering</button>
+                        <button class="quick-filter" onclick="filterOptions('worktype', 'Fabrication')">Fabrication</button>
+                    </div>
+                    <div class="label-options" id="worktype-options">
+                        <!-- Options populated by JS -->
+                    </div>
+                </div>
+
+                <!-- LOCATION Label -->
+                <div class="label-section" id="location-section">
+                    <h4><span class="icon">📍</span> Location</h4>
+                    <div class="label-options" id="location-options">
+                        <!-- Options populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="notes-section">
+                <label for="annotation-notes"><strong>Notes (optional):</strong></label>
+                <textarea id="annotation-notes" placeholder="Add any notes about this annotation..."></textarea>
+            </div>
+
+            <!-- Action Buttons -->
             <div class="action-buttons">
-                <button class="btn skip-btn" onclick="skipActivity()">Skip</button>
-                <div>
-                    <button class="btn btn-secondary" onclick="saveAndPrevious()">← Previous</button>
-                    <button class="btn btn-primary" onclick="saveAndNext()">Save & Next →</button>
+                <button class="btn btn-skip" onclick="skipActivity()">⏭️ Skip</button>
+                <div class="nav-buttons">
+                    <button class="btn btn-secondary" onclick="previousActivity()" id="btn-prev">← Previous</button>
+                    <button class="btn btn-primary" onclick="saveAndNext()" id="btn-next">Save & Next →</button>
                 </div>
+            </div>
+
+            <div class="shortcuts-hint">
+                <kbd>←</kbd> Previous &nbsp; <kbd>→</kbd> Save & Next &nbsp; <kbd>S</kbd> Skip
             </div>
         </div>
 
-        <div id="loading-message" class="card">
-            <p style="text-align: center;">Loading activities...</p>
-        </div>
-
-        <div id="completed-message" class="card" style="display: none;">
-            <h3 style="color: #28a745;">🎉 All Activities Annotated!</h3>
-            <p>You've labeled all activities in the current batch.</p>
-            <button class="btn btn-primary" onclick="loadNextBatch()">Load Next Batch</button>
-            <button class="btn btn-success" onclick="window.location.href='/train'">Train Model</button>
+        <!-- Auto-save indicator -->
+        <div id="save-indicator" style="display: none; position: fixed; bottom: 20px; right: 20px; 
+             background: #28a745; color: white; padding: 0.5rem 1rem; border-radius: 20px; 
+             box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+            ✓ Saved
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/annotate.js') }}"></script>
+    <script>
+        // Label options - these match the established IFS schema
+        const LABEL_OPTIONS = {
+            phase: [
+                'FEED/Study',
+                'Construction', 
+                'Engineering',
+                'Internal/Expenses',
+                'Procurement',
+                'Commissioning',
+                'Operations',
+                'Decommissioning',
+                'Pre-FEED',
+                'Installation',
+                'Other'
+            ],
+            discipline: [
+                'Project Management',
+                'Piping',
+                'Multidiscipline',
+                'FEED Engineering',
+                'FEED/Study',
+                'Electrical Engineering',
+                'Structural',
+                'Mechanical',
+                'Instrumentation',
+                'Process',
+                'HVAC',
+                'Civil',
+                'Subsea',
+                'Internal/Expenses',
+                'Other'
+            ],
+            worktype: [
+                'Management',
+                'Fabrication',
+                'Engineering',
+                'General',
+                'Procurement',
+                'Installation',
+                'Commissioning',
+                'Design',
+                'Review',
+                'Documentation',
+                'Quality',
+                'HSE',
+                'Other'
+            ],
+            location: [
+                'Not Specified',
+                'Onshore',
+                'Offshore',
+                'Yard',
+                'Office',
+                'Site',
+                'Workshop',
+                'Other'
+            ]
+        };
+
+        // State
+        let activities = [];
+        let currentIndex = 0;
+        let annotations = {};
+        let sessionCount = 0;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeLabelOptions();
+            loadActivities();
+            setupKeyboardShortcuts();
+        });
+
+        function initializeLabelOptions() {
+            Object.keys(LABEL_OPTIONS).forEach(labelType => {
+                const container = document.getElementById(`${labelType}-options`);
+                container.innerHTML = LABEL_OPTIONS[labelType].map((option, idx) => `
+                    <label class="label-option" data-value="${option}" onclick="selectOption('${labelType}', '${option}')">
+                        <input type="radio" name="${labelType}" value="${option}">
+                        ${option}
+                    </label>
+                `).join('');
+            });
+        }
+
+        function selectOption(labelType, value) {
+            // Update visual selection
+            const container = document.getElementById(`${labelType}-options`);
+            container.querySelectorAll('.label-option').forEach(opt => {
+                opt.classList.remove('selected');
+                if (opt.dataset.value === value) {
+                    opt.classList.add('selected');
+                    opt.querySelector('input').checked = true;
+                }
+            });
+
+            // Store in current annotations
+            if (!annotations[currentActivityId()]) {
+                annotations[currentActivityId()] = {};
+            }
+            annotations[currentActivityId()][labelType] = value;
+        }
+
+        function currentActivityId() {
+            return activities[currentIndex]?.ACTIVITY_SEQ || activities[currentIndex]?.id || currentIndex;
+        }
+
+        async function loadActivities() {
+            document.getElementById('loading-state').style.display = 'block';
+            document.getElementById('activity-card').style.display = 'none';
+            document.getElementById('empty-state').style.display = 'none';
+
+            try {
+                // Load from bootstrap_sample.csv or annotations.csv
+                const response = await fetch('/api/annotate/activities');
+                const data = await response.json();
+
+                if (data.success && data.activities && data.activities.length > 0) {
+                    activities = data.activities;
+                    annotations = data.existing_annotations || {};
+                    
+                    // Find first unannotated activity
+                    currentIndex = activities.findIndex(a => !isFullyAnnotated(a.ACTIVITY_SEQ || a.id));
+                    if (currentIndex === -1) currentIndex = 0;
+
+                    updateProgress(data.stats || {});
+                    displayCurrentActivity();
+                    
+                    document.getElementById('loading-state').style.display = 'none';
+                    document.getElementById('activity-card').style.display = 'block';
+                } else {
+                    document.getElementById('loading-state').innerHTML = `
+                        <div style="text-align: center; padding: 2rem;">
+                            <h3>⚠️ No Activities to Annotate</h3>
+                            <p>Please generate a bootstrap sample first.</p>
+                            <a href="/bootstrap" class="btn btn-primary">Go to Bootstrap →</a>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading activities:', error);
+                document.getElementById('loading-state').innerHTML = `
+                    <p style="color: red; text-align: center;">Error loading activities: ${error.message}</p>
+                    <div style="text-align: center;"><a href="/bootstrap" class="btn btn-primary">Go to Bootstrap →</a></div>
+                `;
+            }
+        }
+
+        function isFullyAnnotated(activityId) {
+            const ann = annotations[activityId];
+            if (!ann) return false;
+            return ann.phase && ann.discipline && ann.worktype && ann.location;
+        }
+
+        function displayCurrentActivity() {
+            if (currentIndex >= activities.length) {
+                document.getElementById('activity-card').style.display = 'none';
+                document.getElementById('empty-state').style.display = 'block';
+                return;
+            }
+
+            const activity = activities[currentIndex];
+            
+            // Update header info
+            document.getElementById('activity-name').textContent = activity.SHORT_NAME || activity.ACTIVITY_NO || 'Activity';
+            document.getElementById('activity-seq').textContent = activity.ACTIVITY_SEQ || '-';
+            document.getElementById('project-id').textContent = activity.PROJECT_ID || '-';
+            document.getElementById('activity-no').textContent = activity.ACTIVITY_NO || '-';
+            document.getElementById('activity-index-display').textContent = `${currentIndex + 1} of ${activities.length}`;
+
+            // Update description
+            document.getElementById('activity-description').textContent = activity.ACTIVITY_DESCRIPTION || 'No description available';
+
+            // Update context features
+            document.getElementById('discipline-code').textContent = activity.DISCIPLINE_CODE || '-';
+            document.getElementById('phase-prefix').textContent = activity.PHASE_PREFIX || '-';
+            document.getElementById('sub-project-desc').textContent = activity.SUB_PROJECT_DESCRIPTION || '-';
+            document.getElementById('project-category').textContent = activity.PROJECT_CATEGORY || '-';
+            document.getElementById('activity-status').textContent = activity.ACTIVITY_STATUS || '-';
+
+            // Clear and load existing annotations
+            clearSelections();
+            loadExistingAnnotations(activity);
+
+            // Clear notes
+            document.getElementById('annotation-notes').value = annotations[currentActivityId()]?.notes || '';
+        }
+
+        function clearSelections() {
+            document.querySelectorAll('.label-option').forEach(opt => {
+                opt.classList.remove('selected', 'suggested');
+                opt.querySelector('input').checked = false;
+            });
+        }
+
+        function loadExistingAnnotations(activity) {
+            const activityId = activity.ACTIVITY_SEQ || activity.id;
+            
+            // Check if we have existing labels from the CSV (rule-based)
+            if (activity.PHASE_LABEL) selectOption('phase', activity.PHASE_LABEL);
+            if (activity.DISCIPLINE_LABEL) selectOption('discipline', activity.DISCIPLINE_LABEL);
+            if (activity.WORK_TYPE_LABEL) selectOption('worktype', activity.WORK_TYPE_LABEL);
+            if (activity.LOCATION_LABEL) selectOption('location', activity.LOCATION_LABEL);
+
+            // Override with any manual annotations
+            const ann = annotations[activityId];
+            if (ann) {
+                if (ann.phase) selectOption('phase', ann.phase);
+                if (ann.discipline) selectOption('discipline', ann.discipline);
+                if (ann.worktype) selectOption('worktype', ann.worktype);
+                if (ann.location) selectOption('location', ann.location);
+            }
+        }
+
+        function updateProgress(stats) {
+            const total = stats?.total || activities.length;
+            const annotated = stats?.annotated || Object.keys(annotations).filter(k => isFullyAnnotated(k)).length;
+            const remaining = total - annotated;
+            const percentage = total > 0 ? Math.round((annotated / total) * 100) : 0;
+
+            document.getElementById('annotated-count').textContent = annotated;
+            document.getElementById('total-count').textContent = total;
+            document.getElementById('remaining-count').textContent = remaining;
+            document.getElementById('session-count').textContent = sessionCount;
+
+            const progressFill = document.getElementById('progress-bar-fill');
+            progressFill.style.width = `${percentage}%`;
+            progressFill.textContent = `${percentage}%`;
+        }
+
+        async function saveAndNext() {
+            const activityId = currentActivityId();
+            const ann = annotations[activityId] || {};
+            
+            // Validate all labels are selected
+            const phase = ann.phase || getSelectedValue('phase');
+            const discipline = ann.discipline || getSelectedValue('discipline');
+            const worktype = ann.worktype || getSelectedValue('worktype');
+            const location = ann.location || getSelectedValue('location');
+
+            if (!phase || !discipline || !worktype || !location) {
+                alert('Please select a label for each category (Phase, Discipline, Work Type, Location)');
+                return;
+            }
+
+            // Save annotation
+            const annotationData = {
+                activity_seq: activityId,
+                phase_label: phase,
+                discipline_label: discipline,
+                work_type_label: worktype,
+                location_label: location,
+                notes: document.getElementById('annotation-notes').value
+            };
+
+            try {
+                const response = await fetch('/api/annotate/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(annotationData)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showSaveIndicator();
+                    sessionCount++;
+                    
+                    // Update local state
+                    annotations[activityId] = {
+                        phase, discipline, worktype, location,
+                        notes: annotationData.notes
+                    };
+
+                    // Move to next
+                    currentIndex++;
+                    if (currentIndex < activities.length) {
+                        displayCurrentActivity();
+                    } else {
+                        document.getElementById('activity-card').style.display = 'none';
+                        document.getElementById('empty-state').style.display = 'block';
+                    }
+
+                    updateProgress({ total: activities.length });
+                } else {
+                    alert('Error saving: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                alert('Failed to save annotation');
+            }
+        }
+
+        function getSelectedValue(labelType) {
+            const container = document.getElementById(`${labelType}-options`);
+            const selected = container.querySelector('.label-option.selected');
+            return selected?.dataset.value || null;
+        }
+
+        function previousActivity() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                displayCurrentActivity();
+            }
+        }
+
+        function skipActivity() {
+            currentIndex++;
+            if (currentIndex < activities.length) {
+                displayCurrentActivity();
+            } else {
+                document.getElementById('activity-card').style.display = 'none';
+                document.getElementById('empty-state').style.display = 'block';
+            }
+        }
+
+        function filterOptions(labelType, filter) {
+            const container = document.getElementById(`${labelType}-options`);
+            container.querySelectorAll('.label-option').forEach(opt => {
+                if (!filter || opt.dataset.value.toLowerCase().includes(filter.toLowerCase())) {
+                    opt.style.display = 'flex';
+                } else {
+                    opt.style.display = 'none';
+                }
+            });
+        }
+
+        function showSaveIndicator() {
+            const indicator = document.getElementById('save-indicator');
+            indicator.style.display = 'block';
+            setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 1500);
+        }
+
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+                
+                switch(e.key) {
+                    case 'ArrowRight':
+                        saveAndNext();
+                        break;
+                    case 'ArrowLeft':
+                        previousActivity();
+                        break;
+                    case 's':
+                    case 'S':
+                        skipActivity();
+                        break;
+                }
+            });
+        }
+
+        function loadMoreSamples() {
+            window.location.href = '/bootstrap';
+        }
+    </script>
 </body>
 </html>

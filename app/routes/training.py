@@ -82,3 +82,51 @@ def register_training_routes(app):
         """Get current training status."""
         from flask import jsonify
         return jsonify(app.training_status)
+    
+    @app.route('/api/training/label-distribution', methods=['GET'])
+    def get_label_distribution():
+        """Get distribution of labels in the training data."""
+        import os
+        try:
+            # Load annotations
+            annotations_path = 'data/annotations.csv'
+            annotated_path = 'data/bootstrap_annotated.csv'
+            
+            df = None
+            if os.path.exists(annotations_path):
+                df = pd.read_csv(annotations_path)
+            elif os.path.exists(annotated_path):
+                df = pd.read_csv(annotated_path)
+            
+            if df is None or df.empty:
+                return ResponseBuilder.success('No data', {
+                    'distributions': {
+                        'phase': {},
+                        'discipline': {},
+                        'work_type': {},
+                        'location': {}
+                    }
+                })
+            
+            # Calculate distributions for each label type
+            distributions = {
+                'phase': df['PHASE_LABEL'].value_counts().to_dict() if 'PHASE_LABEL' in df.columns else {},
+                'discipline': df['DISCIPLINE_LABEL'].value_counts().to_dict() if 'DISCIPLINE_LABEL' in df.columns else {},
+                'work_type': df['WORK_TYPE_LABEL'].value_counts().to_dict() if 'WORK_TYPE_LABEL' in df.columns else {},
+                'location': df['LOCATION_LABEL'].value_counts().to_dict() if 'LOCATION_LABEL' in df.columns else {}
+            }
+            
+            # Clean NaN keys
+            for label_type in distributions:
+                distributions[label_type] = {
+                    k: v for k, v in distributions[label_type].items() 
+                    if pd.notna(k) and str(k).strip()
+                }
+            
+            return ResponseBuilder.success('Label distributions', {
+                'success': True,
+                'distributions': distributions
+            })
+            
+        except Exception as e:
+            return ResponseBuilder.from_exception(e, "Label distribution")

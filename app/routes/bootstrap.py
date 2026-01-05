@@ -16,8 +16,24 @@ import pandas as pd
 from app.bootstrap_sampler import get_bootstrap_sampler
 from app.incremental_training import get_incremental_training_service
 from app.utils import DataFrameHelper
+import math
 
 logger = logging.getLogger(__name__)
+
+
+def clean_for_json(records):
+    """Clean NaN/Inf values from records for JSON serialization."""
+    def clean_value(v):
+        if v is None:
+            return None
+        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+            return None
+        return v
+    
+    return [
+        {k: clean_value(v) for k, v in row.items()}
+        for row in records
+    ]
 
 bootstrap_bp = Blueprint('bootstrap', __name__)
 
@@ -376,7 +392,7 @@ def load_existing_annotated_data():
             'label_counts': label_counts,
             'columns': df.columns.tolist(),
             'ready_for_training': len(df) >= stats.get('min_samples_needed', 50),
-            'sample_preview': df.head(5).to_dict(orient='records')
+            'sample_preview': clean_for_json(df.head(5).to_dict(orient='records'))
         })
         
     except Exception as e:
@@ -417,7 +433,7 @@ def preview_annotated_data():
             'total': len(df),
             'offset': offset,
             'limit': limit,
-            'samples': subset[available_cols].to_dict(orient='records')
+            'samples': clean_for_json(subset[available_cols].to_dict(orient='records'))
         })
         
     except Exception as e:
@@ -445,13 +461,27 @@ def trigger_training():
     Request body:
     {
         "epochs": 5,           // Optional, auto-determined if not set
-        "early_stopping": true // Optional, default true
+        "early_stopping": true, // Optional, default true
+        "hyperparameters": {   // Optional, all have defaults
+            "model_name": "google/bigbird-roberta-base",
+            "learning_rate": 2e-5,
+            "batch_size": 8,
+            "dropout": 0.1,
+            "weight_decay": 0.01,
+            "scheduler": "linear",
+            "warmup_ratio": 0.06,
+            "max_length": 512,
+            "hidden_dim": 256,
+            "patience": 3,
+            "min_delta": 0.001
+        }
     }
     """
     try:
         data = request.get_json() or {}
         epochs = data.get('epochs')
         early_stopping = data.get('early_stopping', True)
+        hyperparameters = data.get('hyperparameters', {})
         
         service = get_incremental_training_service()
         
@@ -464,17 +494,17 @@ def trigger_training():
             }), 400
         
         # Import the classifier
-        # This would connect to your actual model
-        from app.multilabel_model import MultiLabelClassifier
+        from app.multilabel_model import ActivityClassificationPipeline
         
-        # Get or create classifier
-        classifier = MultiLabelClassifier()
+        # Get or create classifier pipeline
+        classifier = ActivityClassificationPipeline()
         
-        # Trigger training
+        # Trigger training with hyperparameters
         session = service.trigger_training(
             classifier=classifier,
             epochs=epochs,
-            early_stopping=early_stopping
+            early_stopping=early_stopping,
+            hyperparameters=hyperparameters
         )
         
         return jsonify({
@@ -482,7 +512,8 @@ def trigger_training():
             'session_id': session.session_id,
             'n_samples': session.n_samples,
             'metrics': session.metrics,
-            'model_path': session.model_path
+            'model_path': session.model_path,
+            'hyperparameters': hyperparameters
         })
         
     except Exception as e:

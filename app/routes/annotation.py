@@ -16,6 +16,143 @@ def get_service(service_type: str):
 def register_annotation_routes(app):
     """Register annotation routes."""
     
+    @app.route('/api/annotate/activities', methods=['GET'])
+    def get_activities_for_annotation():
+        """
+        Get activities for multi-label annotation.
+        Returns activities from bootstrap_sample.csv or bootstrap_annotated.csv.
+        """
+        try:
+            # Try to load bootstrap_annotated.csv first (has existing labels)
+            annotated_path = 'data/bootstrap_annotated.csv'
+            sample_path = 'data/bootstrap_sample.csv'
+            annotations_path = 'data/annotations.csv'
+            
+            df = None
+            existing_annotations = {}
+            
+            # Priority: annotations.csv > bootstrap_annotated.csv > bootstrap_sample.csv
+            if os.path.exists(annotations_path):
+                df = pd.read_csv(annotations_path)
+            elif os.path.exists(annotated_path):
+                df = pd.read_csv(annotated_path)
+            elif os.path.exists(sample_path):
+                df = pd.read_csv(sample_path)
+            
+            if df is None or df.empty:
+                return ResponseBuilder.success(
+                    'No bootstrap sample found',
+                    {'activities': [], 'existing_annotations': {}, 'stats': {'total': 0, 'annotated': 0}}
+                )
+            
+            # Replace NaN with None for JSON compatibility
+            df = df.where(pd.notna(df), None)
+            
+            # Convert to list of dicts for frontend
+            activities = df.to_dict('records')
+            
+            # Clean up any remaining NaN/float('nan') values
+            import math
+            def clean_value(v):
+                if v is None:
+                    return None
+                if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                    return None
+                return v
+            
+            activities = [
+                {k: clean_value(v) for k, v in row.items()}
+                for row in activities
+            ]
+            
+            # Build existing annotations dict from CSV labels
+            for row in activities:
+                activity_id = row.get('ACTIVITY_SEQ') or row.get('id')
+                if activity_id:
+                    ann = {}
+                    if row.get('PHASE_LABEL'):
+                        ann['phase'] = row['PHASE_LABEL']
+                    if row.get('DISCIPLINE_LABEL'):
+                        ann['discipline'] = row['DISCIPLINE_LABEL']
+                    if row.get('WORK_TYPE_LABEL'):
+                        ann['worktype'] = row['WORK_TYPE_LABEL']
+                    if row.get('LOCATION_LABEL'):
+                        ann['location'] = row['LOCATION_LABEL']
+                    if row.get('NOTES'):
+                        ann['notes'] = row['NOTES']
+                    if ann:
+                        existing_annotations[str(activity_id)] = ann
+            
+            # Calculate stats
+            total = len(activities)
+            annotated = sum(1 for a in activities 
+                          if a.get('PHASE_LABEL') and a.get('DISCIPLINE_LABEL') 
+                          and a.get('WORK_TYPE_LABEL') and a.get('LOCATION_LABEL'))
+            
+            return ResponseBuilder.success(
+                f'Loaded {len(activities)} activities',
+                {
+                    'activities': activities,
+                    'existing_annotations': existing_annotations,
+                    'stats': {
+                        'total': total,
+                        'annotated': annotated
+                    }
+                }
+            )
+            
+        except Exception as e:
+            return ResponseBuilder.from_exception(e, "Get activities")
+    
+    @app.route('/api/annotate/save', methods=['POST'])
+    def save_annotation():
+        """Save multi-label annotation for an activity."""
+        try:
+            data = request.get_json()
+            activity_seq = data.get('activity_seq')
+            phase_label = data.get('phase_label')
+            discipline_label = data.get('discipline_label')
+            work_type_label = data.get('work_type_label')
+            location_label = data.get('location_label')
+            notes = data.get('notes', '')
+            
+            if not activity_seq:
+                return ResponseBuilder.error('Missing activity_seq', 400)
+            
+            # Load the annotations file
+            annotations_path = 'data/annotations.csv'
+            annotated_path = 'data/bootstrap_annotated.csv'
+            
+            # Load existing data
+            if os.path.exists(annotations_path):
+                df = pd.read_csv(annotations_path)
+            elif os.path.exists(annotated_path):
+                df = pd.read_csv(annotated_path)
+            else:
+                return ResponseBuilder.error('No annotation file found', 404)
+            
+            # Find and update the row
+            # Handle both string and numeric ACTIVITY_SEQ
+            mask = df['ACTIVITY_SEQ'].astype(str) == str(activity_seq)
+            
+            if not mask.any():
+                return ResponseBuilder.error(f'Activity {activity_seq} not found', 404)
+            
+            # Update labels
+            df.loc[mask, 'PHASE_LABEL'] = phase_label
+            df.loc[mask, 'DISCIPLINE_LABEL'] = discipline_label
+            df.loc[mask, 'WORK_TYPE_LABEL'] = work_type_label
+            df.loc[mask, 'LOCATION_LABEL'] = location_label
+            df.loc[mask, 'NOTES'] = notes
+            
+            # Save back
+            df.to_csv(annotations_path, index=False)
+            
+            return ResponseBuilder.success('Annotation saved', {'activity_seq': activity_seq})
+            
+        except Exception as e:
+            return ResponseBuilder.from_exception(e, "Save annotation")
+    
     @app.route('/api/annotate/get-batch', methods=['POST'])
     def get_annotation_batch():
         """Get a batch of activities for annotation with uncertainty sampling."""
@@ -143,43 +280,6 @@ def register_annotation_routes(app):
             
         except Exception as e:
             return ResponseBuilder.from_exception(e, "Get annotation batch")
-    
-    @app.route('/api/annotate/save', methods=['POST'])
-    def save_annotation():
-        """Save user annotation for an activity."""
-        try:
-            data = request.get_json()
-            activity_id = data.get('activity_id')
-            categories = data.get('categories', [])
-            uncertainty_score = data.get('uncertainty_score', 0)
-            
-            # Load annotations
-            annotations_df = DataManager.load_annotations()
-            
-            # Add or update annotation
-            annotations_df = DataFrameHelper.merge_annotation(
-                annotations_df,
-                activity_id,
-                categories,
-                uncertainty_score
-            )
-            
-            # Save
-            if not DataManager.save_annotations(annotations_df):
-                return ResponseBuilder.error('Failed to save annotation', 500)
-            
-            # Auto backup to Azure (if enabled)
-            auto_backup = get_service('auto_backup')
-            auto_backup.on_annotation_saved(annotations_df)
-            
-            # Get updated statistics
-            al_service = ActiveLearningService()
-            stats = al_service.get_annotation_statistics(annotations_df)
-            
-            return ResponseBuilder.success('Annotation saved', {'statistics': stats})
-            
-        except Exception as e:
-            return ResponseBuilder.from_exception(e, "Save annotation")
     
     @app.route('/api/annotate/update-query', methods=['POST'])
     def update_annotation_query():

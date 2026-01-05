@@ -352,10 +352,11 @@
             <h3>🤖 Step 4: Train Initial Model</h3>
             <p>Train the model on the annotated bootstrap data.</p>
             
+            <!-- Basic Settings -->
             <div class="form-row">
                 <div class="form-group">
                     <label for="epochs">Epochs (auto if blank)</label>
-                    <input type="number" id="epochs" placeholder="Auto" min="1" max="20">
+                    <input type="number" id="epochs" placeholder="Auto" min="1" max="50">
                 </div>
                 <div class="form-group">
                     <label for="early-stopping">
@@ -364,7 +365,148 @@
                 </div>
             </div>
             
-            <button class="btn btn-primary" id="btn-train" onclick="triggerTraining()">
+            <!-- Advanced Hyperparameters (Collapsible) -->
+            <details class="hyperparameters-panel" style="margin-top: 1rem;">
+                <summary style="cursor: pointer; font-weight: 600; padding: 0.5rem; background: #f5f5f5; border-radius: 4px;">
+                    ⚙️ Advanced Hyperparameters
+                </summary>
+                <div style="padding: 1rem; background: #fafafa; border-radius: 0 0 4px 4px; margin-top: 0.5rem;">
+                    
+                    <!-- Learning Rate -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="learning-rate">Learning Rate</label>
+                            <select id="learning-rate">
+                                <option value="1e-5">1e-5 (Conservative)</option>
+                                <option value="2e-5" selected>2e-5 (Default)</option>
+                                <option value="3e-5">3e-5 (Moderate)</option>
+                                <option value="5e-5">5e-5 (Aggressive)</option>
+                                <option value="1e-4">1e-4 (Fast)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="batch-size">Batch Size</label>
+                            <select id="batch-size">
+                                <option value="4">4 (Low Memory)</option>
+                                <option value="8" selected>8 (Default)</option>
+                                <option value="16">16 (More Memory)</option>
+                                <option value="32">32 (High Memory)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Regularization -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dropout">Dropout Rate</label>
+                            <select id="dropout">
+                                <option value="0.0">0.0 (No Dropout)</option>
+                                <option value="0.1" selected>0.1 (Default)</option>
+                                <option value="0.2">0.2 (Moderate)</option>
+                                <option value="0.3">0.3 (High)</option>
+                                <option value="0.5">0.5 (Very High)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="weight-decay">Weight Decay (L2)</label>
+                            <select id="weight-decay">
+                                <option value="0.0">0.0 (No Decay)</option>
+                                <option value="0.01" selected>0.01 (Default)</option>
+                                <option value="0.001">0.001 (Light)</option>
+                                <option value="0.1">0.1 (Strong)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Scheduler & Warmup -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="scheduler">Learning Rate Scheduler</label>
+                            <select id="scheduler">
+                                <option value="linear" selected>Linear Decay</option>
+                                <option value="cosine">Cosine Annealing</option>
+                                <option value="constant">Constant</option>
+                                <option value="cosine_with_restarts">Cosine with Restarts</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="warmup-ratio">Warmup Ratio</label>
+                            <select id="warmup-ratio">
+                                <option value="0.0">0% (No Warmup)</option>
+                                <option value="0.06" selected>6% (Default)</option>
+                                <option value="0.1">10% (Moderate)</option>
+                                <option value="0.2">20% (Long Warmup)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Model Architecture -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="max-length">Max Sequence Length</label>
+                            <select id="max-length">
+                                <option value="128">128 (Fast)</option>
+                                <option value="256">256 (Balanced)</option>
+                                <option value="512" selected>512 (Default)</option>
+                                <option value="1024">1024 (Long Text)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="hidden-dim">Hidden Dimension</label>
+                            <select id="hidden-dim">
+                                <option value="128">128 (Small)</option>
+                                <option value="256" selected>256 (Default)</option>
+                                <option value="512">512 (Large)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Early Stopping Config -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="patience">Early Stopping Patience</label>
+                            <select id="patience">
+                                <option value="2">2 epochs</option>
+                                <option value="3" selected>3 epochs (Default)</option>
+                                <option value="5">5 epochs</option>
+                                <option value="10">10 epochs</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="min-delta">Min Improvement Delta</label>
+                            <select id="min-delta">
+                                <option value="0.0001">0.0001 (Sensitive)</option>
+                                <option value="0.001" selected>0.001 (Default)</option>
+                                <option value="0.01">0.01 (Relaxed)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Presets -->
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #ddd;">
+                        <label style="font-weight: 600;">Quick Presets:</label>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-sm btn-outline" onclick="applyPreset('default')">
+                                🎯 Default
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline" onclick="applyPreset('small_data')">
+                                📊 Small Data (&lt;500)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline" onclick="applyPreset('large_data')">
+                                📈 Large Data (&gt;5000)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline" onclick="applyPreset('fast')">
+                                ⚡ Fast Training
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline" onclick="applyPreset('regularized')">
+                                🛡️ High Regularization
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </details>
+            
+            <button class="btn btn-primary" id="btn-train" onclick="triggerTraining()" style="margin-top: 1rem;">
                 🚀 Start Training
             </button>
             
@@ -734,6 +876,98 @@
             tableDiv.innerHTML = html;
         }
 
+        // Hyperparameter presets
+        function applyPreset(preset) {
+            const presets = {
+                'default': {
+                    'learning-rate': '2e-5',
+                    'batch-size': '8',
+                    'dropout': '0.1',
+                    'weight-decay': '0.01',
+                    'scheduler': 'linear',
+                    'warmup-ratio': '0.06',
+                    'max-length': '512',
+                    'hidden-dim': '256',
+                    'patience': '3',
+                    'min-delta': '0.001'
+                },
+                'small_data': {
+                    'learning-rate': '1e-5',
+                    'batch-size': '4',
+                    'dropout': '0.3',
+                    'weight-decay': '0.1',
+                    'scheduler': 'cosine',
+                    'warmup-ratio': '0.1',
+                    'max-length': '256',
+                    'hidden-dim': '128',
+                    'patience': '5',
+                    'min-delta': '0.0001'
+                },
+                'large_data': {
+                    'learning-rate': '3e-5',
+                    'batch-size': '16',
+                    'dropout': '0.1',
+                    'weight-decay': '0.01',
+                    'scheduler': 'linear',
+                    'warmup-ratio': '0.06',
+                    'max-length': '512',
+                    'hidden-dim': '512',
+                    'patience': '3',
+                    'min-delta': '0.001'
+                },
+                'fast': {
+                    'learning-rate': '5e-5',
+                    'batch-size': '16',
+                    'dropout': '0.1',
+                    'weight-decay': '0.0',
+                    'scheduler': 'constant',
+                    'warmup-ratio': '0.0',
+                    'max-length': '128',
+                    'hidden-dim': '128',
+                    'patience': '2',
+                    'min-delta': '0.01'
+                },
+                'regularized': {
+                    'learning-rate': '1e-5',
+                    'batch-size': '8',
+                    'dropout': '0.5',
+                    'weight-decay': '0.1',
+                    'scheduler': 'cosine',
+                    'warmup-ratio': '0.2',
+                    'max-length': '512',
+                    'hidden-dim': '256',
+                    'patience': '5',
+                    'min-delta': '0.0001'
+                }
+            };
+            
+            const settings = presets[preset];
+            if (settings) {
+                Object.keys(settings).forEach(key => {
+                    const element = document.getElementById(key);
+                    if (element) {
+                        element.value = settings[key];
+                    }
+                });
+                alert(`Applied "${preset}" preset`);
+            }
+        }
+
+        function getHyperparameters() {
+            return {
+                learning_rate: parseFloat(document.getElementById('learning-rate').value),
+                batch_size: parseInt(document.getElementById('batch-size').value),
+                dropout: parseFloat(document.getElementById('dropout').value),
+                weight_decay: parseFloat(document.getElementById('weight-decay').value),
+                scheduler: document.getElementById('scheduler').value,
+                warmup_ratio: parseFloat(document.getElementById('warmup-ratio').value),
+                max_length: parseInt(document.getElementById('max-length').value),
+                hidden_dim: parseInt(document.getElementById('hidden-dim').value),
+                patience: parseInt(document.getElementById('patience').value),
+                min_delta: parseFloat(document.getElementById('min-delta').value)
+            };
+        }
+
         async function triggerTraining() {
             const btn = document.getElementById('btn-train');
             btn.disabled = true;
@@ -746,13 +980,15 @@
                 const epochsInput = document.getElementById('epochs').value;
                 const epochs = epochsInput ? parseInt(epochsInput) : null;
                 const earlyStopping = document.getElementById('early-stopping').checked;
+                const hyperparams = getHyperparameters();
                 
                 const response = await fetch('/api/training/trigger', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         epochs: epochs,
-                        early_stopping: earlyStopping
+                        early_stopping: earlyStopping,
+                        hyperparameters: hyperparams
                     })
                 });
                 
@@ -770,7 +1006,12 @@
                         <div style="margin-top: 1rem;">
                             <strong>Session:</strong> ${data.session_id}<br>
                             <strong>Samples:</strong> ${data.n_samples}<br>
-                            <strong>Model:</strong> ${data.model_path}
+                            <strong>Model:</strong> ${data.model_path}<br>
+                            <strong>Hyperparameters:</strong><br>
+                            <code style="font-size: 0.85rem; background: #f5f5f5; padding: 0.5rem; display: block; margin-top: 0.5rem; border-radius: 4px;">
+                                LR: ${hyperparams.learning_rate} | Batch: ${hyperparams.batch_size} | Dropout: ${hyperparams.dropout}<br>
+                                Scheduler: ${hyperparams.scheduler} | Warmup: ${hyperparams.warmup_ratio * 100}%
+                            </code>
                         </div>
                     `;
                     

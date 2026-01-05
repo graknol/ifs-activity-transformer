@@ -22,6 +22,7 @@ from transformers import AutoModel, AutoTokenizer, AutoConfig
 from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
+import logging
 from app.config import ModelConfig, DisciplineConfig
 from app.label_mapper import LabelMapper, get_label_mapper
 from app.text_preparation import (
@@ -30,6 +31,8 @@ from app.text_preparation import (
     create_training_text,
     TemplateBasedPreparer
 )
+
+logger = logging.getLogger(__name__)
 
 
 class MultiLabelActivityClassifier(nn.Module):
@@ -380,8 +383,24 @@ class ActivityClassificationPipeline:
         else:
             self.device = device
         
-        # Initialize tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_config.model_name)
+        # Initialize tokenizer - handle BigBird compatibility issues
+        # BigBird's fast tokenizer has bugs with newer transformers versions
+        model_name = self.model_config.model_name
+        try:
+            if 'bigbird' in model_name.lower():
+                # Use BigBird's slow tokenizer directly to avoid conversion bug
+                from transformers import BigBirdTokenizer
+                self.tokenizer = BigBirdTokenizer.from_pretrained(model_name)
+            else:
+                self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        except Exception as e:
+            logger.warning(f"Primary tokenizer loading failed: {e}")
+            # Ultimate fallback - use a compatible RoBERTa tokenizer
+            try:
+                self.tokenizer = AutoTokenizer.from_pretrained('roberta-base')
+                logger.info("Using roberta-base tokenizer as fallback")
+            except Exception as e2:
+                raise RuntimeError(f"Could not load any tokenizer: {e}, {e2}")
         
         # Model and trainer will be initialized during training
         self.model: Optional[MultiLabelActivityClassifier] = None
