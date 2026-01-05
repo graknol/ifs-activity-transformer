@@ -65,9 +65,15 @@ async function connectDatabase() {
 
 async function fetchData() {
     const customQuery = document.getElementById('custom-query').value.trim();
+    const queryType = document.getElementById('query-type').value;
     const statusDiv = document.getElementById('db-status');
+    const fetchBtn = document.getElementById('fetch-btn');
+    const fetchProgress = document.getElementById('fetch-progress');
     
-    statusDiv.textContent = 'Fetching data...';
+    // Show loading state
+    fetchBtn.disabled = true;
+    fetchProgress.style.display = 'inline-block';
+    statusDiv.textContent = 'Fetching data... This may take a moment for large datasets.';
     statusDiv.className = 'status-message info';
     
     try {
@@ -77,7 +83,8 @@ async function fetchData() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                query: customQuery || null
+                query: customQuery || null,
+                query_type: queryType
             })
         });
         
@@ -94,6 +101,9 @@ async function fetchData() {
     } catch (error) {
         statusDiv.textContent = `Error: ${error.message}`;
         statusDiv.className = 'status-message error';
+    } finally {
+        fetchBtn.disabled = false;
+        fetchProgress.style.display = 'none';
     }
 }
 
@@ -176,3 +186,94 @@ function displayDataPreview(data) {
     });
     tableBody.innerHTML = bodyHTML;
 }
+
+// Check for cached data on page load
+async function checkCacheStatus() {
+    try {
+        const response = await fetch('/api/database/cache-info');
+        const data = await response.json();
+        
+        const cacheStatusDiv = document.getElementById('cache-status');
+        if (!cacheStatusDiv) return;
+        
+        if (data.cache && data.cache.exists) {
+            cacheStatusDiv.innerHTML = `
+                <div class="cache-info">
+                    <strong>📦 Cached Data Available:</strong> 
+                    ${data.cache.row_count.toLocaleString()} records (${data.cache.size_mb} MB)
+                    <br><small>Last updated: ${new Date(data.cache.modified).toLocaleString()}</small>
+                    <div class="cache-actions" style="margin-top: 8px;">
+                        <button onclick="loadFromCache()" class="btn btn-success btn-sm">Load from Cache</button>
+                        <button onclick="clearCache()" class="btn btn-warning btn-sm">Clear Cache</button>
+                    </div>
+                </div>
+            `;
+            cacheStatusDiv.style.display = 'block';
+        } else {
+            cacheStatusDiv.innerHTML = '<div class="cache-info muted">No cached data. Fetch from database to create cache.</div>';
+            cacheStatusDiv.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error checking cache:', error);
+    }
+}
+
+async function loadFromCache() {
+    const statusDiv = document.getElementById('db-status');
+    statusDiv.textContent = 'Loading data from cache...';
+    statusDiv.className = 'status-message info';
+    
+    try {
+        const response = await fetch('/api/database/load-cache', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            statusDiv.textContent = data.message;
+            statusDiv.className = 'status-message success';
+            displayDataPreview(data);
+        } else {
+            statusDiv.textContent = data.message;
+            statusDiv.className = 'status-message error';
+        }
+    } catch (error) {
+        statusDiv.textContent = `Error: ${error.message}`;
+        statusDiv.className = 'status-message error';
+    }
+}
+
+async function clearCache() {
+    if (!confirm('Are you sure you want to clear the cached data?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/database/clear-cache', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Cache cleared successfully');
+            checkCacheStatus();
+            
+            // Hide data preview
+            const previewDiv = document.getElementById('data-preview');
+            if (previewDiv) {
+                previewDiv.style.display = 'none';
+            }
+        } else {
+            alert(`Error: ${data.message}`);
+        }
+    } catch (error) {
+        alert(`Error: ${error.message}`);
+    }
+}
+
+// Initialize cache check on page load
+document.addEventListener('DOMContentLoaded', checkCacheStatus);

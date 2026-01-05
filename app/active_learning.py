@@ -6,8 +6,9 @@ that will most improve model performance when labeled.
 """
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Union
 from enum import Enum
+from datetime import datetime
 import random
 
 
@@ -43,16 +44,24 @@ class ActiveLearningService:
         predictions: np.ndarray,
         sample_ids: List[str],
         n_samples: int = 20,
-        strategy: SamplingStrategy = SamplingStrategy.LEAST_CONFIDENCE
+        strategy: SamplingStrategy = SamplingStrategy.LEAST_CONFIDENCE,
+        early_start_dates: Optional[List] = None,
+        recency_weight: float = 0.3
     ) -> List[Dict]:
         """
         Select samples for human annotation based on model uncertainty.
+        
+        Combines uncertainty sampling with recency preference to prioritize
+        newer activities (based on early_start date).
         
         Args:
             predictions: Model prediction probabilities (n_samples, n_classes)
             sample_ids: Identifiers for each sample
             n_samples: Number of samples to select
             strategy: Sampling strategy to use
+            early_start_dates: Optional list of early_start dates for recency weighting
+            recency_weight: Weight for recency in combined score (0-1, default 0.3)
+                           0 = pure uncertainty, 1 = pure recency
             
         Returns:
             List of dictionaries with sample info and uncertainty scores
@@ -67,14 +76,19 @@ class ActiveLearningService:
         else:
             uncertainty_scores = np.random.random(len(predictions))
         
+        # Calculate combined scores with recency
+        combined_scores = self._combine_with_recency(
+            uncertainty_scores, early_start_dates, recency_weight
+        )
+        
         # Determine how many uncertain vs confident samples to show
         # Cap to available samples
         n_samples = min(n_samples, len(predictions))
         n_uncertain = int(n_samples * (1 - self.sanity_check_ratio))
         n_confident = n_samples - n_uncertain
         
-        # Get indices sorted by uncertainty (high to low)
-        sorted_indices = np.argsort(uncertainty_scores)[::-1]
+        # Get indices sorted by combined score (high to low)
+        sorted_indices = np.argsort(combined_scores)[::-1]
         
         # Select most uncertain samples (cap to available)
         uncertain_indices = sorted_indices[:min(n_uncertain, len(predictions))]
@@ -94,15 +108,22 @@ class ActiveLearningService:
             max_conf = np.max(predictions[idx])
             pred_class = np.argmax(predictions[idx])
             
-            results.append({
+            result = {
                 'sample_id': sample_ids[idx],
                 'index': int(idx),
                 'uncertainty_score': float(uncertainty_scores[idx]),
+                'combined_score': float(combined_scores[idx]),
                 'max_confidence': float(max_conf),
                 'predicted_class': int(pred_class),
                 'is_uncertain': bool(uncertainty_scores[idx] > np.median(uncertainty_scores)),
                 'probabilities': predictions[idx].tolist()
-            })
+            }
+            
+            # Include early_start if available
+            if early_start_dates is not None and idx < len(early_start_dates):
+                result['early_start'] = early_start_dates[idx]
+            
+            results.append(result)
         
         return results
     
@@ -153,6 +174,67 @@ class ActiveLearningService:
         # Normalize by max possible entropy
         max_entropy = np.log(predictions.shape[1])
         return entropy / max_entropy
+    
+    def _combine_with_recency(
+        self,
+        uncertainty_scores: np.ndarray,
+        early_start_dates: Optional[List],
+        recency_weight: float = 0.3
+    ) -> np.ndarray:
+        """
+        Combine uncertainty scores with recency preference.
+        
+        Newer activities (higher early_start dates) get a boost to their score.
+        
+        Args:
+            uncertainty_scores: Base uncertainty scores
+            early_start_dates: List of early_start dates (can be datetime, Timestamp, or string)
+            recency_weight: Weight for recency (0-1)
+            
+        Returns:
+            Combined scores (higher = more likely to be selected)
+        """
+        if early_start_dates is None or len(early_start_dates) == 0:
+            return uncertainty_scores
+        
+        # Convert dates to timestamps for comparison
+        timestamps = []
+        for date in early_start_dates:
+            if date is None or (isinstance(date, float) and np.isnan(date)):
+                timestamps.append(None)
+            elif isinstance(date, (datetime, pd.Timestamp)):
+                timestamps.append(date.timestamp())
+            elif isinstance(date, str):
+                try:
+                    parsed = pd.to_datetime(date)
+                    timestamps.append(parsed.timestamp())
+                except:
+                    timestamps.append(None)
+            else:
+                timestamps.append(None)
+        
+        # Handle missing dates - use median for missing values
+        valid_timestamps = [t for t in timestamps if t is not None]
+        if not valid_timestamps:
+            return uncertainty_scores
+        
+        median_ts = np.median(valid_timestamps)
+        timestamps = [t if t is not None else median_ts for t in timestamps]
+        timestamps = np.array(timestamps)
+        
+        # Normalize timestamps to [0, 1] range
+        min_ts = timestamps.min()
+        max_ts = timestamps.max()
+        
+        if max_ts > min_ts:
+            recency_scores = (timestamps - min_ts) / (max_ts - min_ts)
+        else:
+            recency_scores = np.ones_like(timestamps) * 0.5
+        
+        # Combine: weighted average of uncertainty and recency
+        combined = (1 - recency_weight) * uncertainty_scores + recency_weight * recency_scores
+        
+        return combined
     
     def get_annotation_statistics(self, annotations: pd.DataFrame) -> Dict:
         """
@@ -262,16 +344,24 @@ class MultiLabelActiveLearning:
         predictions: np.ndarray,
         sample_ids: List[str],
         n_samples: int = 20,
-        sanity_check_ratio: float = 0.1
+        sanity_check_ratio: float = 0.1,
+        early_start_dates: Optional[List] = None,
+        recency_weight: float = 0.3
     ) -> List[Dict]:
         """
         Select samples for multi-label annotation.
+        
+        Combines uncertainty sampling with recency preference to prioritize
+        newer activities (based on early_start date).
         
         Args:
             predictions: Multi-label predictions (n_samples, n_labels)
             sample_ids: Sample identifiers
             n_samples: Number of samples to select
             sanity_check_ratio: Ratio of confident samples
+            early_start_dates: Optional list of early_start dates for recency weighting
+            recency_weight: Weight for recency in combined score (0-1, default 0.3)
+                           0 = pure uncertainty, 1 = pure recency
             
         Returns:
             List of selected samples with metadata
@@ -281,12 +371,17 @@ class MultiLabelActiveLearning:
         
         uncertainty_scores = self.calculate_multilabel_uncertainty(predictions)
         
+        # Calculate combined scores with recency
+        combined_scores = self._combine_with_recency(
+            uncertainty_scores, early_start_dates, recency_weight
+        )
+        
         # Determine split
         n_uncertain = int(n_samples * (1 - sanity_check_ratio))
         n_confident = n_samples - n_uncertain
         
-        # Sort by uncertainty
-        sorted_indices = np.argsort(uncertainty_scores)[::-1]
+        # Sort by combined score (uncertainty + recency)
+        sorted_indices = np.argsort(combined_scores)[::-1]
         
         # Select samples
         uncertain_indices = sorted_indices[:n_uncertain]
@@ -301,14 +396,82 @@ class MultiLabelActiveLearning:
         
         for idx in selected_indices:
             probs = predictions[idx].tolist()
-            results.append({
+            result = {
                 'sample_id': sample_ids[idx],
                 'index': int(idx),
                 'uncertainty_score': float(uncertainty_scores[idx]),
+                'combined_score': float(combined_scores[idx]),
                 'predictions': probs,
                 'label_confidences': probs,
                 'predicted_labels': np.where(predictions[idx] >= self.confidence_threshold)[0].tolist(),
                 'is_uncertain': bool(uncertainty_scores[idx] > median_uncertainty)
-            })
+            }
+            
+            # Include early_start if available
+            if early_start_dates is not None and idx < len(early_start_dates):
+                result['early_start'] = early_start_dates[idx]
+            
+            results.append(result)
         
         return results
+    
+    def _combine_with_recency(
+        self,
+        uncertainty_scores: np.ndarray,
+        early_start_dates: Optional[List],
+        recency_weight: float = 0.3
+    ) -> np.ndarray:
+        """
+        Combine uncertainty scores with recency preference.
+        
+        Newer activities (higher early_start dates) get a boost to their score.
+        
+        Args:
+            uncertainty_scores: Base uncertainty scores
+            early_start_dates: List of early_start dates (can be datetime, Timestamp, or string)
+            recency_weight: Weight for recency (0-1)
+            
+        Returns:
+            Combined scores (higher = more likely to be selected)
+        """
+        if early_start_dates is None or len(early_start_dates) == 0:
+            return uncertainty_scores
+        
+        # Convert dates to timestamps for comparison
+        timestamps = []
+        for date in early_start_dates:
+            if date is None or (isinstance(date, float) and np.isnan(date)):
+                timestamps.append(None)
+            elif isinstance(date, (datetime, pd.Timestamp)):
+                timestamps.append(date.timestamp())
+            elif isinstance(date, str):
+                try:
+                    parsed = pd.to_datetime(date)
+                    timestamps.append(parsed.timestamp())
+                except:
+                    timestamps.append(None)
+            else:
+                timestamps.append(None)
+        
+        # Handle missing dates - use median for missing values
+        valid_timestamps = [t for t in timestamps if t is not None]
+        if not valid_timestamps:
+            return uncertainty_scores
+        
+        median_ts = np.median(valid_timestamps)
+        timestamps = [t if t is not None else median_ts for t in timestamps]
+        timestamps = np.array(timestamps)
+        
+        # Normalize timestamps to [0, 1] range
+        min_ts = timestamps.min()
+        max_ts = timestamps.max()
+        
+        if max_ts > min_ts:
+            recency_scores = (timestamps - min_ts) / (max_ts - min_ts)
+        else:
+            recency_scores = np.ones_like(timestamps) * 0.5
+        
+        # Combine: weighted average of uncertainty and recency
+        combined = (1 - recency_weight) * uncertainty_scores + recency_weight * recency_scores
+        
+        return combined

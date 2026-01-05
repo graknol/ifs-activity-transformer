@@ -20,14 +20,55 @@ def register_annotation_routes(app):
     def get_annotation_batch():
         """Get a batch of activities for annotation with uncertainty sampling."""
         try:
-            data = request.get_json()
+            data = request.get_json() or {}
             batch_size = data.get('batch_size', 20)
             strategy = data.get('sampling_strategy', 'least_confidence')
             
-            # Load data
+            # Load data from cache
             df = DataManager.load_training_data()
-            if df is None:
-                return ResponseBuilder.error('No training data found', 404)
+            if df is None or df.empty:
+                # Check if cache exists
+                cache_info = DataManager.get_cache_info()
+                if cache_info and cache_info.get('exists'):
+                    return ResponseBuilder.error(
+                        'Failed to load cached training data. Try re-fetching from database.',
+                        500
+                    )
+                return ResponseBuilder.error(
+                    'No training data found. Please load data from the Database page first.',
+                    404,
+                    details={'hint': 'Go to Data page and fetch data from Oracle or load from cache'}
+                )
+            
+            # Identify column names (case-insensitive matching)
+            columns = {col.upper(): col for col in df.columns}
+            
+            # Find ID column
+            id_col = None
+            for name in ['ACTIVITY_SEQ', 'ACTIVITY_ID', 'ID']:
+                if name in columns:
+                    id_col = columns[name]
+                    break
+            if not id_col:
+                id_col = df.columns[0]  # Fallback to first column
+            
+            # Find description column
+            desc_col = None
+            for name in ['ACTIVITY_DESCRIPTION', 'DESCRIPTION', 'SHORT_NAME']:
+                if name in columns:
+                    desc_col = columns[name]
+                    break
+            if not desc_col:
+                desc_col = df.columns[1] if len(df.columns) > 1 else id_col
+            
+            # Find name column
+            name_col = None
+            for name in ['SHORT_NAME', 'ACTIVITY_NO', 'NAME']:
+                if name in columns:
+                    name_col = columns[name]
+                    break
+            if not name_col:
+                name_col = desc_col
             
             # Check for trained model and get predictions
             config = get_service('config')
@@ -47,13 +88,22 @@ def register_annotation_routes(app):
             
             # Use active learning to select samples
             al_service = MultiLabelActiveLearning()
-            sample_ids = df.iloc[:, 0].astype(str).tolist()
+            sample_ids = df[id_col].astype(str).tolist()
+            
+            # Get early_start dates if available for recency weighting
+            early_start_dates = None
+            for name in ['EARLY_START', 'early_start', 'Early_Start']:
+                if name in columns:
+                    early_start_dates = df[columns[name]].tolist()
+                    break
             
             selected = al_service.select_multilabel_samples(
                 predictions,
                 sample_ids,
                 n_samples=min(batch_size, len(df)),
-                sanity_check_ratio=0.1
+                sanity_check_ratio=0.1,
+                early_start_dates=early_start_dates,
+                recency_weight=0.3  # 30% weight to recency, 70% to uncertainty
             )
             
             # Build activity objects for UI
@@ -62,13 +112,21 @@ def register_annotation_routes(app):
                 idx = item['index']
                 row = df.iloc[idx]
                 
+                # Get additional context fields if available
+                project_name = row.get(columns.get('PROJECT_NAME', ''), '') if 'PROJECT_NAME' in columns else ''
+                discipline_code = row.get(columns.get('DISCIPLINE_CODE', ''), '') if 'DISCIPLINE_CODE' in columns else ''
+                sub_project_desc = row.get(columns.get('SUB_PROJECT_DESCRIPTION', ''), '') if 'SUB_PROJECT_DESCRIPTION' in columns else ''
+                
                 activity = {
-                    'id': str(row.iloc[0]),
-                    'name': str(row.iloc[1]) if len(row) > 1 else 'Unnamed',
-                    'description': str(row.iloc[2]) if len(row) > 2 else '',
+                    'id': str(row[id_col]),
+                    'name': str(row[name_col]) if pd.notna(row[name_col]) else 'Unnamed',
+                    'description': str(row[desc_col]) if pd.notna(row[desc_col]) else '',
                     'uncertainty_score': item['uncertainty_score'],
                     'max_confidence': 1 - item['uncertainty_score'],
                     'predicted_categories': [],  # TODO: decode from predictions
+                    'project_name': str(project_name) if pd.notna(project_name) else '',
+                    'discipline_code': str(discipline_code) if pd.notna(discipline_code) else '',
+                    'sub_project_description': str(sub_project_desc) if pd.notna(sub_project_desc) else '',
                     'features': {}  # TODO: extract numerical features
                 }
                 activities.append(activity)
@@ -144,3 +202,37 @@ def register_annotation_routes(app):
             
         except Exception as e:
             return ResponseBuilder.from_exception(e, "Update query")
+
+    @app.route('/api/annotate/data-status', methods=['GET'])
+    def get_data_status():
+        """Get status of training data for annotation."""
+        try:
+            cache_info = DataManager.get_cache_info()
+            annotations_df = DataManager.load_annotations()
+            
+            # Get annotation statistics
+            al_service = ActiveLearningService()
+            stats = al_service.get_annotation_statistics(annotations_df)
+            
+            if cache_info and cache_info.get('exists'):
+                return ResponseBuilder.success(
+                    f'Training data loaded: {cache_info.get("row_count", 0)} activities',
+                    {
+                        'data_loaded': True,
+                        'cache': cache_info,
+                        'statistics': stats
+                    }
+                )
+            else:
+                return ResponseBuilder.success(
+                    'No training data loaded',
+                    {
+                        'data_loaded': False,
+                        'cache': None,
+                        'statistics': stats,
+                        'hint': 'Go to Data page to load training data from Oracle database or CSV'
+                    }
+                )
+                
+        except Exception as e:
+            return ResponseBuilder.from_exception(e, "Data status")

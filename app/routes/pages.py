@@ -29,3 +29,8 @@ def register_page_routes(app):
     def annotate_page():
         """Annotation interface for active learning."""
         return render_template('annotate.html')
+    
+    @app.route('/bootstrap')
+    def bootstrap_page():
+        """Bootstrap sampling and incremental training page."""
+        return render_template('bootstrap.html')

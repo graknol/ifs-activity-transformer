@@ -18,9 +18,49 @@ let categories = [
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadCategories();
-    loadActivities();
+    checkDataStatusAndLoad();
     checkBackupStatus();
 });
+
+async function checkDataStatusAndLoad() {
+    const loadingMessage = document.getElementById('loading-message');
+    
+    try {
+        // First check if data is loaded
+        const statusResponse = await fetch('/api/annotate/data-status');
+        const statusData = await statusResponse.json();
+        
+        if (!statusData.data_loaded) {
+            // No data loaded - show helpful message
+            loadingMessage.innerHTML = `
+                <div class="alert alert-warning" style="padding: 20px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #856404;">⚠️ No Training Data Loaded</h3>
+                    <p>Before you can annotate activities, you need to load training data.</p>
+                    <p><strong>Steps:</strong></p>
+                    <ol>
+                        <li>Go to the <a href="/database" style="color: #0056b3; font-weight: bold;">Data page</a></li>
+                        <li>Connect to the Oracle database or upload a CSV file</li>
+                        <li>Fetch training data (or load from cache if available)</li>
+                        <li>Return here to start annotating</li>
+                    </ol>
+                    <a href="/database" class="btn btn-primary" style="margin-top: 10px;">Go to Data Page →</a>
+                </div>
+            `;
+            
+            // Update progress to show 0 activities
+            updateProgress(statusData.statistics || { total_samples: 0, labeled_samples: 0 });
+            return;
+        }
+        
+        // Data is loaded, proceed to load activities
+        loadingMessage.textContent = `Loading activities from ${statusData.cache?.row_count?.toLocaleString() || 'cached'} records...`;
+        await loadActivities();
+        
+    } catch (error) {
+        console.error('Error checking data status:', error);
+        loadingMessage.innerHTML = `<p class="error">Error checking data status: ${error.message}</p>`;
+    }
+}
 
 // Backup management functions
 async function checkBackupStatus() {
@@ -217,6 +257,8 @@ function toggleCategory(category) {
 }
 
 async function loadActivities() {
+    const loadingMessage = document.getElementById('loading-message');
+    
     try {
         const response = await fetch('/api/annotate/get-batch', {
             method: 'POST',
@@ -238,14 +280,20 @@ async function loadActivities() {
             if (activities.length > 0) {
                 currentIndex = 0;
                 displayActivity(activities[currentIndex]);
-                document.getElementById('loading-message').style.display = 'none';
+                loadingMessage.style.display = 'none';
                 document.getElementById('activity-card').style.display = 'block';
             } else {
-                document.getElementById('loading-message').innerHTML = 
-                    '<p>No activities available for annotation.</p>';
+                loadingMessage.innerHTML = 
+                    '<p>No activities available for annotation. All activities may already be labeled.</p>';
             }
         } else {
-            alert('Error loading activities: ' + data.message);
+            // Show error with hint if available
+            let errorHtml = `<p class="error">Error loading activities: ${data.message}</p>`;
+            if (data.details && data.details.hint) {
+                errorHtml += `<p><em>${data.details.hint}</em></p>`;
+                errorHtml += `<a href="/database" class="btn btn-primary">Go to Data Page</a>`;
+            }
+            loadingMessage.innerHTML = errorHtml;
         }
     } catch (error) {
         console.error('Error:', error);

@@ -27,6 +27,58 @@ class DataManager:
         os.makedirs(cls.DATA_DIR, exist_ok=True)
     
     @classmethod
+    def has_cached_data(cls) -> bool:
+        """Check if cached training data exists."""
+        return os.path.exists(cls.TRAINING_DATA_PATH)
+    
+    @classmethod
+    def get_cache_info(cls) -> Optional[Dict[str, Any]]:
+        """
+        Get information about cached training data.
+        
+        Returns:
+            Dictionary with cache info, or None if no cache exists
+        """
+        if not cls.has_cached_data():
+            return None
+        
+        try:
+            stat = os.stat(cls.TRAINING_DATA_PATH)
+            from datetime import datetime
+            
+            # Get row count without loading entire file
+            with open(cls.TRAINING_DATA_PATH, 'r', encoding='utf-8') as f:
+                row_count = sum(1 for _ in f) - 1  # Subtract header
+            
+            return {
+                'exists': True,
+                'path': cls.TRAINING_DATA_PATH,
+                'size_bytes': stat.st_size,
+                'size_mb': round(stat.st_size / (1024 * 1024), 2),
+                'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                'row_count': row_count
+            }
+        except Exception as e:
+            logger.error(f"Error getting cache info: {e}")
+            return {'exists': True, 'error': str(e)}
+    
+    @classmethod
+    def clear_cache(cls) -> bool:
+        """
+        Clear cached training data.
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            if os.path.exists(cls.TRAINING_DATA_PATH):
+                os.remove(cls.TRAINING_DATA_PATH)
+            return True
+        except Exception as e:
+            logger.error(f"Error clearing cache: {e}")
+            return False
+    
+    @classmethod
     def load_training_data(cls) -> Optional[pd.DataFrame]:
         """
         Load training data from standard location.
@@ -230,8 +282,22 @@ class DataFrameHelper:
         Returns:
             Dictionary with preview data
         """
+        # Replace NaN/NaT with None for valid JSON serialization
+        preview_df = df.head(n_rows).copy()
+        preview_df = preview_df.where(pd.notnull(preview_df), None)
+        
+        # Convert to records, handling any remaining edge cases
+        records = preview_df.to_dict('records')
+        
+        # Ensure no NaN values remain (double-check for edge cases)
+        import math
+        for record in records:
+            for key, value in record.items():
+                if isinstance(value, float) and math.isnan(value):
+                    record[key] = None
+        
         return {
-            'preview': df.head(n_rows).to_dict('records'),
+            'preview': records,
             'columns': df.columns.tolist(),
             'row_count': len(df)
         }

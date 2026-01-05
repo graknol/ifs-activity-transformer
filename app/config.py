@@ -3,11 +3,16 @@ Configuration classes for the application.
 Following the configuration management pattern documented in .github/instructions.md
 """
 import os
+import json
+from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Dict, List, Any, Tuple
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Default path to discipline codes JSON
+DEFAULT_DISCIPLINE_CONFIG_PATH = Path(__file__).parent / "discipline_codes.json"
 
 
 def get_int_env(key: str, default: int) -> int:
@@ -207,6 +212,7 @@ class Config:
         self.model = ModelConfig.from_env()
         self.flask = FlaskConfig.from_env()
         self.azure = AzureConfig.from_env()
+        self.discipline = DisciplineConfig.load()
     
     @classmethod
     def from_env(cls) -> 'Config':
@@ -225,6 +231,267 @@ class Config:
             f"database=<DatabaseConfig>, "
             f"model={self.model}, "
             f"flask=<FlaskConfig debug={self.flask.debug}>, "
-            f"azure=<AzureConfig backup_enabled={self.azure.backup_enabled}>"
+            f"azure=<AzureConfig backup_enabled={self.azure.backup_enabled}>, "
+            f"discipline=<DisciplineConfig loaded={self.discipline.is_loaded}>"
             f")"
         )
+
+
+class DisciplineConfig:
+    """
+    Configuration for discipline codes, phases, and label mappings.
+    
+    Loads from discipline_codes.json and provides:
+    - Discipline code lookups
+    - Phase mappings
+    - Sub-project level 1 structure
+    - Code-to-labels mappings for ML training
+    """
+    
+    def __init__(self, data: Dict[str, Any]):
+        """
+        Initialize with loaded configuration data.
+        
+        Args:
+            data: Parsed JSON configuration dictionary
+        """
+        self._data = data
+        self.is_loaded = bool(data)
+        
+    @classmethod
+    def load(cls, path: Optional[Path] = None) -> 'DisciplineConfig':
+        """
+        Load discipline configuration from JSON file.
+        
+        Args:
+            path: Path to JSON file. Uses default if None.
+            
+        Returns:
+            DisciplineConfig instance
+        """
+        config_path = path or DEFAULT_DISCIPLINE_CONFIG_PATH
+        
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return cls(data)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"Warning: Could not load discipline config from {config_path}: {e}")
+            return cls({})
+    
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        """Get configuration metadata."""
+        return self._data.get('metadata', {})
+    
+    @property
+    def discipline_codes(self) -> Dict[str, Dict[str, str]]:
+        """
+        Get all discipline codes organized by phase prefix.
+        
+        Returns:
+            Dict mapping phase prefix to {code: description}
+        """
+        return self._data.get('discipline_codes', {})
+    
+    @property
+    def code_to_labels(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get code-to-labels mapping for ML training.
+        
+        Returns:
+            Dict mapping discipline code to label dictionary
+        """
+        return self._data.get('code_to_labels_mapping', {}).get('mappings', {})
+    
+    @property
+    def phase_labels(self) -> List[str]:
+        """Get list of phase label names."""
+        return self._data.get('classification_labels', {}).get('phase_labels', [])
+    
+    @property
+    def discipline_labels(self) -> List[str]:
+        """Get list of discipline label names."""
+        return self._data.get('classification_labels', {}).get('discipline_labels', [])
+    
+    @property
+    def work_type_labels(self) -> List[str]:
+        """Get list of work type label names."""
+        return self._data.get('classification_labels', {}).get('work_type_labels', [])
+    
+    @property
+    def location_labels(self) -> List[str]:
+        """Get list of location label names."""
+        return self._data.get('classification_labels', {}).get('location_labels', [])
+    
+    @property
+    def all_labels(self) -> List[str]:
+        """Get combined list of all classification labels."""
+        return (
+            self.phase_labels + 
+            self.discipline_labels + 
+            self.work_type_labels + 
+            self.location_labels
+        )
+    
+    @property
+    def project_main_levels(self) -> Dict[str, Any]:
+        """Get project main level execution order."""
+        return self._data.get('project_main_levels', {})
+    
+    @property
+    def target_sub_project_structure(self) -> Dict[str, Any]:
+        """Get target sub-project level 1 structure for new system."""
+        return self._data.get('target_sub_project_structure', {})
+    
+    @property
+    def project_categories(self) -> Dict[str, Any]:
+        """Get project category definitions."""
+        return self._data.get('project_categories', {})
+    
+    @property
+    def technical_disciplines(self) -> Dict[str, Any]:
+        """Get technical discipline cross-reference."""
+        return self._data.get('technical_disciplines', {})
+    
+    def get_code_description(self, code: str) -> Optional[str]:
+        """
+        Get description for a discipline code.
+        
+        Args:
+            code: Two-letter discipline code (e.g., 'KE', 'QL')
+            
+        Returns:
+            Description string or None if not found
+        """
+        for phase_data in self.discipline_codes.values():
+            codes = phase_data.get('codes', {})
+            if code in codes:
+                return codes[code]
+        return None
+    
+    def get_phase_for_code(self, code: str) -> Optional[str]:
+        """
+        Get phase prefix letter for a discipline code.
+        
+        Args:
+            code: Two-letter discipline code
+            
+        Returns:
+            Single-letter phase prefix or None
+        """
+        if len(code) >= 1:
+            prefix = code[0].upper()
+            if prefix in self.discipline_codes:
+                return prefix
+        return None
+    
+    def get_labels_for_code(self, code: str) -> Dict[str, Any]:
+        """
+        Get ML labels for a discipline code.
+        
+        Args:
+            code: Two-letter discipline code
+            
+        Returns:
+            Dict with phase, discipline, work_type, and optionally location
+        """
+        return self.code_to_labels.get(code, {})
+    
+    def get_phase_from_sub_project_id(self, sub_project_id: str) -> Optional[str]:
+        """
+        Derive phase from sub-project ID prefix (NEW system structure).
+        
+        Args:
+            sub_project_id: Sub-project ID (e.g., '3000', '7500')
+            
+        Returns:
+            Phase label or None
+        """
+        try:
+            # Extract first digit to determine thousand range
+            if sub_project_id and sub_project_id[0].isdigit():
+                prefix = int(sub_project_id[0])
+                phase_mapping = {
+                    1: 'PRELIMINARY',
+                    2: 'MANAGEMENT',
+                    3: 'ENGINEERING',
+                    4: 'PROCUREMENT',
+                    5: 'FABRICATION',
+                    6: 'CONSTRUCTION_ONSHORE',
+                    7: 'INSTALLATION_OFFSHORE',
+                    8: 'COMMISSIONING',
+                    9: 'QUALITY'  # or CONTINGENCY
+                }
+                return phase_mapping.get(prefix)
+        except (ValueError, IndexError):
+            pass
+        return None
+    
+    def get_contract_type_from_sub_project_id(self, sub_project_id: str) -> Optional[str]:
+        """
+        Derive contract type (RB/LS) from sub-project ID (NEW system).
+        
+        Convention: xxx0 = RB (Reimbursable), xxx5 = LS (Lump Sum)
+        
+        Args:
+            sub_project_id: Sub-project ID string
+            
+        Returns:
+            'RB', 'LS', or None
+        """
+        try:
+            if sub_project_id and len(sub_project_id) == 4:
+                # Check if it's in the 1000-8999 range (cost tracking)
+                num = int(sub_project_id)
+                if 1000 <= num < 9000:
+                    # x000-x499 = RB, x500-x999 = LS
+                    hundreds = (num % 1000) // 100
+                    return 'LS' if hundreds >= 5 else 'RB'
+        except ValueError:
+            pass
+        return None
+    
+    def get_training_sql_query(self, sample: bool = False) -> Optional[str]:
+        """
+        Get recommended SQL query for training data.
+        
+        Args:
+            sample: If True, returns query limited to 10000 rows
+            
+        Returns:
+            SQL query string or None
+        """
+        sql_queries = self._data.get('sql_queries', {})
+        if sample:
+            query_config = sql_queries.get('training_data_sample', {})
+        else:
+            query_config = sql_queries.get('training_data_full', {})
+        return query_config.get('query')
+    
+    def get_sql_query(self, query_name: str) -> Optional[str]:
+        """
+        Get a named SQL query from configuration.
+        
+        Args:
+            query_name: Name of the query (e.g., 'activity_count', 'discipline_distribution')
+            
+        Returns:
+            SQL query string or None
+        """
+        sql_queries = self._data.get('sql_queries', {})
+        query_config = sql_queries.get(query_name, {})
+        return query_config.get('query')
+    
+    def get_connection_info(self) -> Dict[str, str]:
+        """
+        Get database connection information.
+        
+        Returns:
+            Dict with connect_to, db_link, and notes
+        """
+        return self._data.get('sql_queries', {}).get('connection_info', {})
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary (returns raw data)."""
+        return self._data.copy()
