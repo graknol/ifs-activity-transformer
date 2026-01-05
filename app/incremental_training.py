@@ -113,7 +113,8 @@ class IncrementalTrainingService:
                 'pending_for_training': self._pending_count,
                 'retrain_threshold': self.retrain_threshold,
                 'ready_for_retrain': False,
-                'ready_for_initial_train': False
+                'ready_for_initial_train': False,
+                'min_samples_needed': self.min_samples_for_training
             }
         
         df = pd.read_csv(self.annotations_path)
