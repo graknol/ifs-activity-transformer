@@ -31,12 +31,15 @@ def get_bootstrap_status():
         # Check for various bootstrap files
         bootstrap_path = os.path.join(data_dir, 'bootstrap_sample.csv')
         annotated_path = os.path.join(data_dir, 'bootstrap_annotated.csv')
+        annotated_json_path = os.path.join(data_dir, 'bootstrap_annotated.json')
         training_data_path = os.path.join(data_dir, 'training_data.csv')
         
         status = {
             'has_bootstrap_sample': os.path.exists(bootstrap_path),
-            'has_annotated_bootstrap': os.path.exists(annotated_path),
-            'has_training_data': os.path.exists(training_data_path)
+            'has_annotated_bootstrap': os.path.exists(annotated_path) or os.path.exists(annotated_json_path),
+            'has_training_data': os.path.exists(training_data_path),
+            'annotated_csv_path': annotated_path if os.path.exists(annotated_path) else None,
+            'annotated_json_path': annotated_json_path if os.path.exists(annotated_json_path) else None
         }
         
         # Get counts if files exist
@@ -44,16 +47,24 @@ def get_bootstrap_status():
             df = pd.read_csv(bootstrap_path)
             status['bootstrap_sample_count'] = len(df)
         
-        if status['has_annotated_bootstrap']:
+        if os.path.exists(annotated_path):
             df = pd.read_csv(annotated_path)
             status['annotated_count'] = len(df)
-            # Count labeled rows
-            labeled = df[df.get('categories', pd.Series()).notna() | 
-                        df.get('DISCIPLINE_LABEL', pd.Series()).notna()]
-            status['labeled_count'] = len(labeled) if not labeled.empty else 0
+            # Count labeled rows - check for any label column
+            label_cols = ['PHASE_LABEL', 'DISCIPLINE_LABEL', 'WORK_TYPE_LABEL', 'categories']
+            labeled_count = 0
+            for col in label_cols:
+                if col in df.columns:
+                    labeled_count = max(labeled_count, df[col].notna().sum())
+            status['labeled_count'] = int(labeled_count)
+        elif os.path.exists(annotated_json_path):
+            with open(annotated_json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            status['annotated_count'] = len(data.get('samples', []))
+            status['labeled_count'] = status['annotated_count']  # Assume all labeled in JSON
         
         if status['has_training_data']:
-            df = pd.read_csv(training_data_path)
+            df = pd.read_csv(training_data_path, low_memory=False)
             status['training_data_count'] = len(df)
         
         return jsonify(status)
@@ -310,6 +321,107 @@ def import_annotated_bootstrap():
         logger.error(f"Error importing bootstrap data: {e}")
         import traceback
         traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bootstrap_bp.route('/api/bootstrap/load-existing', methods=['POST'])
+def load_existing_annotated_data():
+    """
+    Load existing annotated bootstrap data from disk.
+    
+    This is useful after restarting the app - it checks for 
+    bootstrap_annotated.csv or bootstrap_annotated.json and loads it.
+    """
+    try:
+        data_dir = 'data'
+        csv_path = os.path.join(data_dir, 'bootstrap_annotated.csv')
+        json_path = os.path.join(data_dir, 'bootstrap_annotated.json')
+        
+        df = None
+        source = None
+        
+        # Try CSV first, then JSON
+        if os.path.exists(csv_path):
+            df = pd.read_csv(csv_path)
+            source = csv_path
+        elif os.path.exists(json_path):
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            df = pd.DataFrame(data.get('samples', []))
+            source = json_path
+            # Also save as CSV for consistency
+            df.to_csv(csv_path, index=False, encoding='utf-8-sig')
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'No annotated bootstrap data found. Generate and annotate samples first.',
+                'checked_paths': [csv_path, json_path]
+            }), 404
+        
+        # Count labels
+        label_cols = ['PHASE_LABEL', 'DISCIPLINE_LABEL', 'WORK_TYPE_LABEL', 'LOCATION_LABEL', 'categories']
+        label_counts = {}
+        for col in label_cols:
+            if col in df.columns:
+                label_counts[col] = int(df[col].notna().sum())
+        
+        # Get training service status
+        training_service = get_incremental_training_service()
+        stats = training_service.get_annotation_stats()
+        
+        return jsonify({
+            'success': True,
+            'source': source,
+            'total_samples': len(df),
+            'label_counts': label_counts,
+            'columns': df.columns.tolist(),
+            'ready_for_training': len(df) >= stats.get('min_samples_needed', 50),
+            'sample_preview': df.head(5).to_dict(orient='records')
+        })
+        
+    except Exception as e:
+        logger.error(f"Error loading existing annotated data: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@bootstrap_bp.route('/api/bootstrap/preview', methods=['GET'])
+def preview_annotated_data():
+    """
+    Preview the annotated bootstrap data.
+    
+    Query params:
+    - limit: Number of samples to return (default 20)
+    - offset: Starting position (default 0)
+    """
+    try:
+        limit = request.args.get('limit', 20, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        
+        csv_path = 'data/bootstrap_annotated.csv'
+        if not os.path.exists(csv_path):
+            return jsonify({'error': 'No annotated data found'}), 404
+        
+        df = pd.read_csv(csv_path)
+        
+        # Get subset
+        subset = df.iloc[offset:offset + limit]
+        
+        # Select relevant columns for preview
+        preview_cols = ['ACTIVITY_DESCRIPTION', 'PHASE_LABEL', 'DISCIPLINE_LABEL', 
+                       'WORK_TYPE_LABEL', 'LOCATION_LABEL', 'PROJECT_ID', 'SUB_PROJECT_ID']
+        available_cols = [c for c in preview_cols if c in df.columns]
+        
+        return jsonify({
+            'total': len(df),
+            'offset': offset,
+            'limit': limit,
+            'samples': subset[available_cols].to_dict(orient='records')
+        })
+        
+    except Exception as e:
+        logger.error(f"Error previewing data: {e}")
         return jsonify({'error': str(e)}), 500
 
 

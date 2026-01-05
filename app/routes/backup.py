@@ -18,12 +18,14 @@ def register_backup_routes(app):
         try:
             backup_service = get_service('backup_service')
             stats = backup_service.get_backup_statistics()
+            local_files = backup_service.get_local_files_status()
             
             return ResponseBuilder.success(
                 'Backup status retrieved',
                 {
                     'backup_enabled': backup_service.is_enabled(),
-                    'statistics': stats
+                    'statistics': stats,
+                    'local_files': local_files
                 }
             )
         except Exception as e:
@@ -112,3 +114,214 @@ def register_backup_routes(app):
                 
         except Exception as e:
             return ResponseBuilder.from_exception(e, "Restore backup")
+    
+    # =========================================================================
+    # DISASTER RECOVERY ENDPOINTS
+    # =========================================================================
+    
+    @app.route('/api/backup/disaster-recovery/create', methods=['POST'])
+    def create_disaster_recovery_backup():
+        """
+        Create a full disaster recovery backup.
+        
+        This backs up ALL critical files:
+        - Training data (training_data.csv)
+        - Bootstrap samples and annotations
+        - Configuration files
+        - Model checkpoints
+        - Training history
+        """
+        try:
+            data = request.get_json() or {}
+            description = data.get('description', '')
+            
+            backup_service = get_service('backup_service')
+            
+            if not backup_service.is_enabled():
+                return ResponseBuilder.error(
+                    'Azure backup not enabled. Set AZURE_STORAGE_CONNECTION_STRING environment variable.',
+                    400
+                )
+            
+            result = backup_service.create_full_backup(description)
+            
+            if result['success']:
+                return ResponseBuilder.success(
+                    f"Disaster recovery backup created: {len(result['files_backed_up'])} files",
+                    result
+                )
+            else:
+                return ResponseBuilder.error(
+                    f"Backup partially failed: {len(result['files_failed'])} files failed",
+                    500,
+                    result
+                )
+                
+        except Exception as e:
+            return ResponseBuilder.from_exception(e, "Create DR backup")
+    
+    @app.route('/api/backup/disaster-recovery/list', methods=['GET'])
+    def list_disaster_recovery_backups():
+        """List all disaster recovery backups."""
+        try:
+            backup_service = get_service('backup_service')
+            backups = backup_service.list_disaster_recovery_backups()
+            
+            return ResponseBuilder.success(
+                f'Found {len(backups)} disaster recovery backups',
+                {'backups': backups}
+            )
+            
+        except Exception as e:
+            return ResponseBuilder.from_exception(e, "List DR backups")
+    
+    @app.route('/api/backup/disaster-recovery/restore', methods=['POST'])
+    def restore_disaster_recovery_backup():
+        """
+        Restore all files from a disaster recovery backup.
+        
+        WARNING: This will overwrite existing local files!
+        """
+        try:
+            data = request.get_json()
+            backup_folder = data.get('backup_folder')
+            
+            if not backup_folder:
+                return ResponseBuilder.error('No backup_folder provided', 400)
+            
+            backup_service = get_service('backup_service')
+            result = backup_service.restore_full_backup(backup_folder)
+            
+            if result['success']:
+                return ResponseBuilder.success(
+                    f"Restored {len(result['files_restored'])} files",
+                    result
+                )
+            else:
+                return ResponseBuilder.error(
+                    f"Restore failed: {result.get('error', 'Unknown error')}",
+                    500,
+                    result
+                )
+                
+        except Exception as e:
+            return ResponseBuilder.from_exception(e, "Restore DR backup")
+    
+    @app.route('/api/backup/local-files', methods=['GET'])
+    def get_local_files_status():
+        """Get status of all critical local files."""
+        try:
+            backup_service = get_service('backup_service')
+            status = backup_service.get_local_files_status()
+            
+            return ResponseBuilder.success('Local files status', status)
+            
+        except Exception as e:
+            return ResponseBuilder.from_exception(e, "Get local files")
+    
+    # =========================================================================
+    # AUTOMATIC BACKUP SCHEDULER ENDPOINTS
+    # =========================================================================
+    
+    @app.route('/api/backup/schedule/status', methods=['GET'])
+    def get_backup_schedule_status():
+        """Get the current backup schedule status."""
+        try:
+            from app.backup_scheduler import get_backup_scheduler
+            
+            scheduler = get_backup_scheduler()
+            # Ensure scheduler has backup service
+            backup_service = get_service('backup_service')
+            scheduler.set_backup_service(backup_service)
+            
+            status = scheduler.get_status()
+            
+            return ResponseBuilder.success('Backup schedule status', status)
+            
+        except Exception as e:
+            return ResponseBuilder.from_exception(e, "Get schedule status")
+    
+    @app.route('/api/backup/schedule/configure', methods=['POST'])
+    def configure_backup_schedule():
+        """Configure the automatic backup schedule.
+        
+        Request body:
+        {
+            "enabled": true/false,
+            "interval_hours": 1|6|12|24|48|168
+        }
+        """
+        try:
+            from app.backup_scheduler import get_backup_scheduler
+            
+            data = request.get_json() or {}
+            enabled = data.get('enabled', False)
+            interval_hours = data.get('interval_hours', 24)
+            
+            # Validate interval
+            valid_intervals = [1, 6, 12, 24, 48, 168]
+            if interval_hours not in valid_intervals:
+                return ResponseBuilder.error(
+                    f'Invalid interval. Must be one of: {valid_intervals}',
+                    400
+                )
+            
+            scheduler = get_backup_scheduler()
+            # Ensure scheduler has backup service
+            backup_service = get_service('backup_service')
+            scheduler.set_backup_service(backup_service)
+            
+            # Check if backup service is enabled before enabling scheduler
+            if enabled and not backup_service.is_enabled():
+                return ResponseBuilder.error(
+                    'Cannot enable automatic backups: Azure backup not configured. '
+                    'Set AZURE_STORAGE_CONNECTION_STRING environment variable.',
+                    400
+                )
+            
+            status = scheduler.configure(enabled, interval_hours)
+            
+            action = 'enabled' if enabled else 'disabled'
+            return ResponseBuilder.success(
+                f'Automatic backups {action}',
+                status
+            )
+            
+        except Exception as e:
+            return ResponseBuilder.from_exception(e, "Configure schedule")
+    
+    @app.route('/api/backup/schedule/trigger', methods=['POST'])
+    def trigger_immediate_backup():
+        """Trigger an immediate backup (outside of schedule)."""
+        try:
+            from app.backup_scheduler import get_backup_scheduler
+            
+            data = request.get_json() or {}
+            description = data.get('description', 'Manual trigger from UI')
+            
+            scheduler = get_backup_scheduler()
+            backup_service = get_service('backup_service')
+            scheduler.set_backup_service(backup_service)
+            
+            if not backup_service.is_enabled():
+                return ResponseBuilder.error(
+                    'Azure backup not enabled. Set AZURE_STORAGE_CONNECTION_STRING environment variable.',
+                    400
+                )
+            
+            result = scheduler.trigger_backup_now(description)
+            
+            if result.get('success') or result.get('status') == 'success':
+                return ResponseBuilder.success(
+                    f"Backup created: {len(result.get('files_backed_up', []))} files",
+                    result
+                )
+            else:
+                return ResponseBuilder.error(
+                    result.get('error', 'Backup failed'),
+                    500,
+                    result
+                )
+                
+        except Exception as e:
+            return ResponseBuilder.from_exception(e, "Trigger backup")

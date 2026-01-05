@@ -34,3 +34,8 @@ def register_page_routes(app):
     def bootstrap_page():
         """Bootstrap sampling and incremental training page."""
         return render_template('bootstrap.html')
+    
+    @app.route('/backup')
+    def backup_page():
+        """Backup and disaster recovery management page."""
+        return render_template('backup.html')

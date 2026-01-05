@@ -196,6 +196,7 @@
                 <li><a href="/annotate">Annotate</a></li>
                 <li><a href="/train">Train</a></li>
                 <li><a href="/predict">Predict</a></li>
+                <li><a href="/backup">Backup</a></li>
             </ul>
         </div>
     </nav>
@@ -317,18 +318,33 @@
         <!-- Step 3: Import Annotated Data -->
         <div class="section-card">
             <h3>📥 Step 3: Import Annotated Data</h3>
-            <p>Upload your annotated data back into the system.</p>
+            <p>Upload your annotated data back into the system, or load existing annotations from disk.</p>
+            
+            <!-- Existing Annotations Detection -->
+            <div id="existing-annotations-alert" style="display: none; background: #e8f5e9; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #4CAF50;">
+                <strong>✅ Existing Annotations Found!</strong>
+                <p id="existing-annotations-info" style="margin: 0.5rem 0;"></p>
+                <button class="btn btn-primary" onclick="loadExistingAnnotations()">
+                    📂 Load Existing Annotations
+                </button>
+            </div>
             
             <div class="form-group">
-                <label for="file-upload">Upload Annotated File (CSV or JSON)</label>
+                <label for="file-upload">Or Upload Annotated File (CSV or JSON)</label>
                 <input type="file" id="file-upload" accept=".csv,.json">
             </div>
             
-            <button class="btn btn-primary" onclick="importAnnotations()">
-                📥 Import Annotations
+            <button class="btn btn-secondary" onclick="importAnnotations()">
+                📥 Import from File
             </button>
             
             <div id="import-result" style="display: none; margin-top: 1rem;"></div>
+            
+            <!-- Annotation Preview -->
+            <div id="annotation-preview" style="display: none; margin-top: 1rem;">
+                <h4>Loaded Annotations Preview</h4>
+                <div id="preview-table" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px;"></div>
+            </div>
         </div>
 
         <!-- Step 4: Train Model -->
@@ -400,11 +416,19 @@
                 document.getElementById('stat-bootstrap').textContent = 
                     bootstrapData.bootstrap_sample_count || 0;
                 document.getElementById('stat-annotated').textContent = 
-                    trainingData.annotations?.total_annotations || 0;
+                    bootstrapData.annotated_count || trainingData.annotations?.total_annotations || 0;
                 document.getElementById('stat-pending').textContent = 
                     trainingData.annotations?.pending_for_training || 0;
                 document.getElementById('stat-sessions').textContent = 
                     trainingData.training_sessions || 0;
+                
+                // Check for existing annotations on disk
+                if (bootstrapData.has_annotated_bootstrap) {
+                    const alertDiv = document.getElementById('existing-annotations-alert');
+                    const infoDiv = document.getElementById('existing-annotations-info');
+                    alertDiv.style.display = 'block';
+                    infoDiv.textContent = `Found ${bootstrapData.annotated_count || 0} annotated samples (${bootstrapData.labeled_count || 0} labeled) in ${bootstrapData.annotated_csv_path || bootstrapData.annotated_json_path}`;
+                }
                 
                 // Update workflow steps
                 updateWorkflowSteps(bootstrapData, trainingData);
@@ -457,7 +481,7 @@
             // Step 4: Train Model
             if (trainingData.training_sessions > 0) {
                 step4.classList.add('completed');
-            } else if (trainingData.annotations?.ready_for_initial_train) {
+            } else if (bootstrapData.has_annotated_bootstrap || trainingData.annotations?.ready_for_initial_train) {
                 step4.classList.add('active');
             }
             
@@ -643,6 +667,71 @@
                 resultDiv.style.display = 'block';
                 resultDiv.innerHTML = `<span class="status-badge error">❌ ${error.message}</span>`;
             }
+        }
+
+        async function loadExistingAnnotations() {
+            try {
+                const response = await fetch('/api/bootstrap/load-existing', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                const resultDiv = document.getElementById('import-result');
+                resultDiv.style.display = 'block';
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <span class="status-badge ready">✅ Loaded ${data.total_samples} annotated samples</span>
+                        <div style="margin-top: 0.5rem; font-size: 0.9rem; color: #666;">
+                            Source: ${data.source}<br>
+                            Labels: ${Object.entries(data.label_counts || {}).map(([k, v]) => `${k}: ${v}`).join(', ')}
+                        </div>
+                    `;
+                    
+                    // Show preview
+                    if (data.sample_preview && data.sample_preview.length > 0) {
+                        showAnnotationPreview(data.sample_preview);
+                    }
+                    
+                    // Hide the alert since we loaded it
+                    document.getElementById('existing-annotations-alert').style.display = 'none';
+                    
+                    refreshStatus();
+                } else {
+                    resultDiv.innerHTML = `<span class="status-badge error">❌ ${data.error}</span>`;
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                const resultDiv = document.getElementById('import-result');
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<span class="status-badge error">❌ ${error.message}</span>`;
+            }
+        }
+
+        function showAnnotationPreview(samples) {
+            const previewDiv = document.getElementById('annotation-preview');
+            const tableDiv = document.getElementById('preview-table');
+            
+            previewDiv.style.display = 'block';
+            
+            let html = '<table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">';
+            html += '<tr style="background: #f5f5f5;"><th style="padding: 0.5rem; text-align: left;">Description</th><th>Phase</th><th>Discipline</th><th>Work Type</th></tr>';
+            
+            for (const s of samples) {
+                const desc = (s.ACTIVITY_DESCRIPTION || '').substring(0, 40) + '...';
+                html += `<tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 0.5rem;">${desc}</td>
+                    <td style="padding: 0.5rem;">${s.PHASE_LABEL || '-'}</td>
+                    <td style="padding: 0.5rem;">${s.DISCIPLINE_LABEL || '-'}</td>
+                    <td style="padding: 0.5rem;">${s.WORK_TYPE_LABEL || '-'}</td>
+                </tr>`;
+            }
+            
+            html += '</table>';
+            tableDiv.innerHTML = html;
         }
 
         async function triggerTraining() {

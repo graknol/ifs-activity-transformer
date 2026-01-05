@@ -216,4 +216,5 @@ app/discipline_codes.json
 app/disciplines.csv
 app/main_level_execution.csv
 app/sub_lvl1_description.csv
+data/bootstrap_annotated.json
 data/bootstrap_export_20260105_010318.json

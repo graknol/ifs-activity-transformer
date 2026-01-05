@@ -111,6 +111,12 @@ def _create_service_container(config: Config, model_manager) -> ServiceContainer
     container.register_singleton('backup_service', backup_service)
     container.register_singleton('auto_backup', AutoBackupManager(backup_service))
     
+    # Initialize and register backup scheduler
+    from app.backup_scheduler import init_backup_scheduler
+    backup_scheduler = init_backup_scheduler(backup_service)
+    container.register_singleton('backup_scheduler', backup_scheduler)
+    logger.info("Backup scheduler initialized")
+    
     return container
 
 
