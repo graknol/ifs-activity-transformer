@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Train Model - IFS Activity Transformer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .train-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .section-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .section-card h3 {
+            margin-top: 0;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        /* Data Summary */
+        .data-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .summary-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            padding: 1.25rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .summary-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .summary-card .label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+        
+        .summary-card.ready {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        }
+        
+        .summary-card.ready .value {
+            color: #28a745;
+        }
+        
+        .summary-card.warning {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+        }
+        
+        .summary-card.warning .value {
+            color: #856404;
+        }
+        
+        /* Label Distribution */
+        .label-distribution {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .label-distribution {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .label-dist-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        
+        .label-dist-card h4 {
+            margin: 0 0 0.75rem 0;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .dist-bars {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .dist-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+        
+        .dist-label {
+            width: 120px;
+            flex-shrink: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .dist-bar-container {
+            flex: 1;
+            background: #e9ecef;
+            height: 16px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 0 0.5rem;
+        }
+        
+        .dist-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+        }
+        
+        .dist-count {
+            width: 40px;
+            text-align: right;
+            color: #666;
+        }
+        
+        /* Hyperparameters */
+        .form-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .form-group {
+            flex: 1;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        .form-group small {
+            display: block;
+            margin-top: 0.25rem;
+            color: #666;
+            font-size: 0.8rem;
+        }
+        
+        /* Presets */
+        .preset-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        
+        .preset-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        
+        .preset-btn:hover {
+            border-color: #667eea;
+            background: #f5f5ff;
+        }
+        
+        .preset-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+        
+        /* Training Progress */
+        .training-progress {
+            display: none;
+        }
+        
+        .training-progress.active {
+            display: block;
+        }
+        
+        .progress-container {
+            margin: 1rem 0;
+        }
+        
+        .progress-bar-outer {
+            background: #e9ecef;
+            height: 24px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .progress-bar-inner {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+        
+        .training-log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+        
+        .log-entry {
+            margin-bottom: 0.25rem;
+        }
+        
+        .log-entry.info { color: #569cd6; }
+        .log-entry.success { color: #4ec9b0; }
+        .log-entry.warning { color: #dcdcaa; }
+        .log-entry.error { color: #f44747; }
+        
+        /* Training Results */
+        .training-results {
+            display: none;
+        }
+        
+        .training-results.show {
+            display: block;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .metric-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .metric-card .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #28a745;
+        }
+        
+        .metric-card .label {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        /* Training History */
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        
+        .history-table th,
+        .history-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .history-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .history-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        /* Buttons */
+        .btn-train {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .btn-train:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-train:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        /* Collapsible sections */
+        details {
+            margin-bottom: 1rem;
+        }
+        
+        details summary {
+            cursor: pointer;
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        details[open] summary {
+            border-radius: 4px 4px 0 0;
+        }
+        
+        details > div {
+            padding: 1rem;
+            background: #fafafa;
+            border-radius: 0 0 4px 4px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="navbar-brand">IFS Activity Transformer</h1>
+            <ul class="navbar-nav">
+                <li><a href="/">Home</a></li>
+                <li><a href="/database">Data</a></li>
+                <li><a href="/bootstrap">Bootstrap</a></li>
+                <li><a href="/annotate">Annotate</a></li>
+                <li><a href="/train" class="active">Train</a></li>
+                <li><a href="/predict">Predict</a></li>
+                <li><a href="/backup">Backup</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container train-container">
+        <h2>🤖 Train Multi-Label Classifier</h2>
+        <p>Train a transformer model to classify activities into <strong>Phase</strong>, <strong>Discipline</strong>, <strong>Work Type</strong>, and <strong>Location</strong>.</p>
+
+        <!-- Data Summary -->
+        <div class="section-card">
+            <h3>📊 Training Data Summary</h3>
+            
+            <div class="data-summary">
+                <div class="summary-card" id="card-total">
+                    <div class="value" id="total-samples">-</div>
+                    <div class="label">Total Samples</div>
+                </div>
+                <div class="summary-card" id="card-annotated">
+                    <div class="value" id="annotated-samples">-</div>
+                    <div class="label">Annotated</div>
+                </div>
+                <div class="summary-card" id="card-labels">
+                    <div class="value">4</div>
+                    <div class="label">Label Types</div>
+                </div>
+                <div class="summary-card" id="card-status">
+                    <div class="value" id="status-text">Checking...</div>
+                    <div class="label">Status</div>
+                </div>
+            </div>
+
+            <!-- Label Distribution -->
+            <details open>
+                <summary>📈 Label Distribution</summary>
+                <div>
+                    <div class="label-distribution">
+                        <div class="label-dist-card">
+                            <h4>📅 Phase Labels</h4>
+                            <div class="dist-bars" id="phase-dist"></div>
+                        </div>
+                        <div class="label-dist-card">
+                            <h4>🔧 Discipline Labels</h4>
+                            <div class="dist-bars" id="discipline-dist"></div>
+                        </div>
+                        <div class="label-dist-card">
+                            <h4>⚙️ Work Type Labels</h4>
+                            <div class="dist-bars" id="worktype-dist"></div>
+                        </div>
+                        <div class="label-dist-card">
+                            <h4>📍 Location Labels</h4>
+                            <div class="dist-bars" id="location-dist"></div>
+                        </div>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <!-- Training Configuration -->
+        <div class="section-card">
+            <h3>⚙️ Training Configuration</h3>
+            
+            <!-- Quick Presets -->
+            <div style="margin-bottom: 1rem;">
+                <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Quick Presets:</label>
+                <div class="preset-buttons">
+                    <button class="preset-btn active" onclick="applyPreset('default')">🎯 Default</button>
+                    <button class="preset-btn" onclick="applyPreset('small_data')">📊 Small Data (&lt;500)</button>
+                    <button class="preset-btn" onclick="applyPreset('large_data')">📈 Large Data (&gt;5000)</button>
+                    <button class="preset-btn" onclick="applyPreset('fast')">⚡ Fast Training</button>
+                    <button class="preset-btn" onclick="applyPreset('regularized')">🛡️ High Regularization</button>
+                </div>
+            </div>
+            
+            <!-- Model Selection -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="model-name">Base Model</label>
+                    <select id="model-name">
+                        <option value="google/bigbird-roberta-base">BigBird RoBERTa Base (Long Texts)</option>
+                        <option value="bert-base-uncased">BERT Base Uncased</option>
+                        <option value="roberta-base">RoBERTa Base</option>
+                        <option value="distilbert-base-uncased">DistilBERT (Faster)</option>
+                    </select>
+                    <small>Choose based on text length and compute resources</small>
+                </div>
+                <div class="form-group">
+                    <label for="epochs">Epochs</label>
+                    <input type="number" id="epochs" placeholder="Auto (based on data size)" min="1" max="50">
+                    <small>Leave empty for automatic selection</small>
+                </div>
+            </div>
+
+            <!-- Advanced Hyperparameters -->
+            <details>
+                <summary>⚙️ Advanced Hyperparameters</summary>
+                <div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="learning-rate">Learning Rate</label>
+                            <select id="learning-rate">
+                                <option value="1e-5">1e-5 (Conservative)</option>
+                                <option value="2e-5" selected>2e-5 (Default)</option>
+                                <option value="3e-5">3e-5 (Moderate)</option>
+                                <option value="5e-5">5e-5 (Aggressive)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="batch-size">Batch Size</label>
+                            <select id="batch-size">
+                                <option value="4">4 (Low Memory)</option>
+                                <option value="8" selected>8 (Default)</option>
+                                <option value="16">16 (More Memory)</option>
+                                <option value="32">32 (High Memory)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dropout">Dropout Rate</label>
+                            <select id="dropout">
+                                <option value="0.1" selected>0.1 (Default)</option>
+                                <option value="0.2">0.2 (Moderate)</option>
+                                <option value="0.3">0.3 (High)</option>
+                                <option value="0.5">0.5 (Very High)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="weight-decay">Weight Decay</label>
+                            <select id="weight-decay">
+                                <option value="0.0">0.0 (None)</option>
+                                <option value="0.01" selected>0.01 (Default)</option>
+                                <option value="0.05">0.05 (High)</option>
+                                <option value="0.1">0.1 (Very High)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="max-length">Max Sequence Length</label>
+                            <select id="max-length">
+                                <option value="128">128 (Fast)</option>
+                                <option value="256">256 (Balanced)</option>
+                                <option value="512" selected>512 (Default)</option>
+                                <option value="1024">1024 (Long Text)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="warmup-ratio">Warmup Ratio</label>
+                            <select id="warmup-ratio">
+                                <option value="0.0">0% (No Warmup)</option>
+                                <option value="0.06" selected>6% (Default)</option>
+                                <option value="0.1">10%</option>
+                                <option value="0.2">20%</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="patience">Early Stopping Patience</label>
+                            <select id="patience">
+                                <option value="2">2 epochs</option>
+                                <option value="3" selected>3 epochs</option>
+                                <option value="5">5 epochs</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="early-stopping" checked>
+                                Enable Early Stopping
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <!-- Train Button -->
+            <div style="margin-top: 1.5rem; text-align: center;">
+                <button class="btn-train" id="btn-train" onclick="startTraining()">
+                    🚀 Start Training
+                </button>
+                <p id="train-status-msg" style="margin-top: 0.5rem; color: #666;"></p>
+            </div>
+        </div>
+
+        <!-- Training Progress -->
+        <div class="section-card training-progress" id="training-progress">
+            <h3>🔄 Training Progress</h3>
+            
+            <div class="progress-container">
+                <div class="progress-bar-outer">
+                    <div class="progress-bar-inner" id="progress-bar" style="width: 0%">0%</div>
+                </div>
+            </div>
+            
+            <p id="progress-message" style="text-align: center; margin: 1rem 0;">Initializing...</p>
+            
+            <div class="training-log" id="training-log">
+                <div class="log-entry info">[INFO] Waiting to start training...</div>
+            </div>
+        </div>
+
+        <!-- Training Results -->
+        <div class="section-card training-results" id="training-results">
+            <h3>✅ Training Complete</h3>
+            
+            <div class="metrics-grid" id="metrics-grid">
+                <!-- Populated dynamically -->
+            </div>
+            
+            <div style="margin-top: 1rem; text-align: center;">
+                <a href="/predict" class="btn btn-primary">Test Predictions →</a>
+                <button class="btn btn-secondary" onclick="startTraining()">Train Again</button>
+            </div>
+        </div>
+
+        <!-- Training History -->
+        <div class="section-card">
+            <h3>📜 Training History</h3>
+            
+            <div id="training-history">
+                <p style="color: #666;">No training sessions yet.</p>
+            </div>
+        </div>
+
+        <!-- Model Info -->
+        <div class="section-card">
+            <h3>ℹ️ About the Model</h3>
+            <p>
+                This system trains a <strong>transformer-based multi-label classifier</strong> to categorize IFS activities 
+                into four dimensions:
+            </p>
+            <ul>
+                <li><strong>Phase</strong> - Project phase (FEED/Study, Construction, Engineering, etc.)</li>
+                <li><strong>Discipline</strong> - Engineering discipline (Piping, Electrical, Mechanical, etc.)</li>
+                <li><strong>Work Type</strong> - Type of work (Engineering, Fabrication, Management, etc.)</li>
+                <li><strong>Location</strong> - Work location (Offshore, Onshore, Yard, etc.)</li>
+            </ul>
+            <p>
+                The model learns from the activity descriptions combined with contextual features like 
+                discipline codes, phase prefixes, and project categories.
+            </p>
+            
+            <h4>Training Tips:</h4>
+            <ul>
+                <li>More diverse training data generally leads to better generalization</li>
+                <li>Imbalanced labels may need oversampling or class weights</li>
+                <li>Start with default hyperparameters, then tune if needed</li>
+                <li>Watch for overfitting if training loss decreases but validation loss increases</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Presets configuration
+        const PRESETS = {
+            default: {
+                'model-name': 'google/bigbird-roberta-base',
+                'learning-rate': '2e-5',
+                'batch-size': '8',
+                'dropout': '0.1',
+                'weight-decay': '0.01',
+                'max-length': '512',
+                'warmup-ratio': '0.06',
+                'patience': '3',
+                'early-stopping': true
+            },
+            small_data: {
+                'model-name': 'distilbert-base-uncased',
+                'learning-rate': '1e-5',
+                'batch-size': '4',
+                'dropout': '0.3',
+                'weight-decay': '0.05',
+                'max-length': '256',
+                'warmup-ratio': '0.1',
+                'patience': '5',
+                'early-stopping': true
+            },
+            large_data: {
+                'model-name': 'google/bigbird-roberta-base',
+                'learning-rate': '5e-5',
+                'batch-size': '16',
+                'dropout': '0.1',
+                'weight-decay': '0.01',
+                'max-length': '512',
+                'warmup-ratio': '0.06',
+                'patience': '3',
+                'early-stopping': true
+            },
+            fast: {
+                'model-name': 'distilbert-base-uncased',
+                'learning-rate': '3e-5',
+                'batch-size': '16',
+                'dropout': '0.1',
+                'weight-decay': '0.01',
+                'max-length': '128',
+                'warmup-ratio': '0.0',
+                'patience': '2',
+                'early-stopping': true
+            },
+            regularized: {
+                'model-name': 'bert-base-uncased',
+                'learning-rate': '1e-5',
+                'batch-size': '8',
+                'dropout': '0.4',
+                'weight-decay': '0.1',
+                'max-length': '512',
+                'warmup-ratio': '0.1',
+                'patience': '5',
+                'early-stopping': true
+            }
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDataSummary();
+            loadTrainingHistory();
+        });
+
+        function applyPreset(name) {
+            const preset = PRESETS[name];
+            if (!preset) return;
+
+            // Update form values
+            Object.entries(preset).forEach(([key, value]) => {
+                const element = document.getElementById(key);
+                if (element) {
+                    if (element.type === 'checkbox') {
+                        element.checked = value;
+                    } else {
+                        element.value = value;
+                    }
+                }
+            });
+
+            // Update active button
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        async function loadDataSummary() {
+            try {
+                const response = await fetch('/api/training/status');
+                const data = await response.json();
+
+                // Update summary cards
+                const total = data.annotations?.total_annotations || 0;
+                const minNeeded = data.annotations?.min_samples_needed || 10;
+                
+                document.getElementById('total-samples').textContent = total;
+                document.getElementById('annotated-samples').textContent = total;
+
+                // Update status
+                const statusCard = document.getElementById('card-status');
+                const statusText = document.getElementById('status-text');
+                
+                if (total >= minNeeded) {
+                    statusCard.classList.add('ready');
+                    statusText.textContent = 'Ready';
+                    document.getElementById('btn-train').disabled = false;
+                } else {
+                    statusCard.classList.add('warning');
+                    statusText.textContent = `Need ${minNeeded - total} more`;
+                    document.getElementById('btn-train').disabled = true;
+                    document.getElementById('train-status-msg').textContent = 
+                        `Need at least ${minNeeded} annotated samples to train. Currently have ${total}.`;
+                }
+
+                // Load label distributions
+                await loadLabelDistributions();
+                
+            } catch (error) {
+                console.error('Error loading summary:', error);
+                document.getElementById('status-text').textContent = 'Error';
+            }
+        }
+
+        async function loadLabelDistributions() {
+            try {
+                const response = await fetch('/api/training/label-distribution');
+                const data = await response.json();
+
+                if (data.success) {
+                    renderDistribution('phase-dist', data.distributions.phase);
+                    renderDistribution('discipline-dist', data.distributions.discipline);
+                    renderDistribution('worktype-dist', data.distributions.work_type);
+                    renderDistribution('location-dist', data.distributions.location);
+                }
+            } catch (error) {
+                console.error('Error loading distributions:', error);
+            }
+        }
+
+        function renderDistribution(containerId, distribution) {
+            const container = document.getElementById(containerId);
+            if (!distribution || Object.keys(distribution).length === 0) {
+                container.innerHTML = '<p style="color: #666; font-size: 0.85rem;">No data available</p>';
+                return;
+            }
+
+            const maxCount = Math.max(...Object.values(distribution));
+            
+            container.innerHTML = Object.entries(distribution)
+                .sort((a, b) => b[1] - a[1])
+                .map(([label, count]) => `
+                    <div class="dist-item">
+                        <span class="dist-label" title="${label}">${label}</span>
+                        <div class="dist-bar-container">
+                            <div class="dist-bar" style="width: ${(count / maxCount) * 100}%"></div>
+                        </div>
+                        <span class="dist-count">${count}</span>
+                    </div>
+                `).join('');
+        }
+
+        async function startTraining() {
+            const btn = document.getElementById('btn-train');
+            btn.disabled = true;
+            btn.textContent = '⏳ Training...';
+
+            // Show progress section
+            const progressSection = document.getElementById('training-progress');
+            progressSection.classList.add('active');
+            
+            // Hide results
+            document.getElementById('training-results').classList.remove('show');
+
+            // Gather hyperparameters
+            const hyperparameters = {
+                model_name: document.getElementById('model-name').value,
+                learning_rate: parseFloat(document.getElementById('learning-rate').value),
+                batch_size: parseInt(document.getElementById('batch-size').value),
+                dropout: parseFloat(document.getElementById('dropout').value),
+                weight_decay: parseFloat(document.getElementById('weight-decay').value),
+                max_length: parseInt(document.getElementById('max-length').value),
+                warmup_ratio: parseFloat(document.getElementById('warmup-ratio').value),
+                patience: parseInt(document.getElementById('patience').value)
+            };
+
+            const epochs = document.getElementById('epochs').value;
+            const earlyStop = document.getElementById('early-stopping').checked;
+
+            // Clear log
+            const logContainer = document.getElementById('training-log');
+            logContainer.innerHTML = '<div class="log-entry info">[INFO] Starting training...</div>';
+
+            try {
+                addLogEntry('info', `Model: ${hyperparameters.model_name}`);
+                addLogEntry('info', `Learning Rate: ${hyperparameters.learning_rate}`);
+                addLogEntry('info', `Batch Size: ${hyperparameters.batch_size}`);
+                
+                const response = await fetch('/api/training/trigger', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        epochs: epochs ? parseInt(epochs) : null,
+                        early_stopping: earlyStop,
+                        hyperparameters: hyperparameters
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    addLogEntry('success', `Training completed! Session: ${result.session_id}`);
+                    addLogEntry('success', `Samples: ${result.n_samples}`);
+                    
+                    // Update progress bar
+                    updateProgress(100, 'Training complete!');
+                    
+                    // Show results
+                    showResults(result);
+                    
+                    // Reload history
+                    loadTrainingHistory();
+                } else {
+                    addLogEntry('error', `Training failed: ${result.error}`);
+                    updateProgress(0, 'Training failed');
+                }
+            } catch (error) {
+                console.error('Training error:', error);
+                addLogEntry('error', `Error: ${error.message}`);
+            }
+
+            btn.disabled = false;
+            btn.textContent = '🚀 Start Training';
+        }
+
+        function addLogEntry(type, message) {
+            const logContainer = document.getElementById('training-log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${type.toUpperCase()}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function updateProgress(percent, message) {
+            const bar = document.getElementById('progress-bar');
+            const msg = document.getElementById('progress-message');
+            
+            bar.style.width = `${percent}%`;
+            bar.textContent = `${percent}%`;
+            msg.textContent = message;
+        }
+
+        function showResults(result) {
+            const resultsSection = document.getElementById('training-results');
+            const metricsGrid = document.getElementById('metrics-grid');
+            
+            const metrics = result.metrics || {};
+            
+            metricsGrid.innerHTML = `
+                <div class="metric-card">
+                    <div class="value">${result.n_samples || '-'}</div>
+                    <div class="label">Training Samples</div>
+                </div>
+                <div class="metric-card">
+                    <div class="value">${metrics.train_loss?.toFixed(4) || '-'}</div>
+                    <div class="label">Training Loss</div>
+                </div>
+                <div class="metric-card">
+                    <div class="value">${metrics.eval_loss?.toFixed(4) || '-'}</div>
+                    <div class="label">Validation Loss</div>
+                </div>
+                <div class="metric-card">
+                    <div class="value">${metrics.n_labels || '4'}</div>
+                    <div class="label">Label Categories</div>
+                </div>
+            `;
+            
+            resultsSection.classList.add('show');
+        }
+
+        async function loadTrainingHistory() {
+            try {
+                const response = await fetch('/api/training/history');
+                const data = await response.json();
+
+                const container = document.getElementById('training-history');
+
+                if (!data.sessions || data.sessions.length === 0) {
+                    container.innerHTML = '<p style="color: #666;">No training sessions yet.</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Session ID</th>
+                                <th>Date</th>
+                                <th>Samples</th>
+                                <th>Epochs</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.sessions.reverse().map(s => `
+                                <tr>
+                                    <td>${s.session_id}</td>
+                                    <td>${new Date(s.timestamp).toLocaleString()}</td>
+                                    <td>${s.n_samples}</td>
+                                    <td>${s.epochs}</td>
+                                    <td>${s.metrics?.status || 'completed'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backup & Recovery - IFS Activity Transformer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .backup-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .backup-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .backup-card h3 {
+            margin-top: 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #4CAF50;
+        }
+        .backup-card.danger h3 {
+            border-bottom-color: #f44336;
+        }
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+        .status-indicator.enabled {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .status-indicator.disabled {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        .stats-row:last-child {
+            border-bottom: none;
+        }
+        .stats-label {
+            color: #666;
+        }
+        .stats-value {
+            font-weight: 600;
+        }
+        .file-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .file-item.exists {
+            background: #f9fff9;
+        }
+        .file-item.missing {
+            background: #fff9f9;
+        }
+        .file-name {
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        .file-size {
+            color: #666;
+            font-size: 0.85rem;
+        }
+        .file-status {
+            font-size: 1.2rem;
+        }
+        .backup-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .backup-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: #fafafa;
+        }
+        .backup-item:hover {
+            background: #f0f0f0;
+        }
+        .backup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+        .backup-timestamp {
+            font-weight: 600;
+            color: #1976d2;
+        }
+        .backup-size {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .backup-description {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        .backup-files {
+            font-size: 0.85rem;
+            color: #888;
+        }
+        .backup-actions {
+            margin-top: 0.75rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .btn-sm {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.85rem;
+        }
+        .btn-danger {
+            background: #f44336;
+            color: white;
+            border: none;
+        }
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+        .alert {
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        .alert-warning {
+            background: #fff3e0;
+            border: 1px solid #ffcc80;
+            color: #e65100;
+        }
+        .alert-success {
+            background: #e8f5e9;
+            border: 1px solid #a5d6a7;
+            color: #2e7d32;
+        }
+        .alert-danger {
+            background: #ffebee;
+            border: 1px solid #ef9a9a;
+            color: #c62828;
+        }
+        .progress-container {
+            margin: 1rem 0;
+            display: none;
+        }
+        .progress-bar {
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .schedule-form {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .form-group {
+            flex: 1;
+            min-width: 150px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .last-backup-info {
+            background: #e3f2fd;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        .restore-warning {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="navbar-brand">IFS Activity Transformer</h1>
+            <ul class="navbar-nav">
+                <li><a href="/">Home</a></li>
+                <li><a href="/database">Data</a></li>
+                <li><a href="/bootstrap">Bootstrap</a></li>
+                <li><a href="/annotate">Annotate</a></li>
+                <li><a href="/train">Train</a></li>
+                <li><a href="/predict">Predict</a></li>
+                <li><a href="/backup" class="active">Backup</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>💾 Backup & Disaster Recovery</h2>
+        <p>Manage backups to Azure Blob Storage for disaster recovery and data protection.</p>
+
+        <!-- Status Overview -->
+        <div class="backup-grid">
+            <div class="backup-card">
+                <h3>☁️ Azure Backup Status</h3>
+                <div id="azure-status">
+                    <div class="status-indicator disabled">
+                        <span class="status-dot"></span>
+                        <span>Checking...</span>
+                    </div>
+                </div>
+                <div id="backup-stats">
+                    <div class="stats-row">
+                        <span class="stats-label">Total Backups</span>
+                        <span class="stats-value" id="stat-total">-</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="stats-label">Total Size</span>
+                        <span class="stats-value" id="stat-size">-</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="stats-label">DR Backups</span>
+                        <span class="stats-value" id="stat-dr">-</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="stats-label">Last Backup</span>
+                        <span class="stats-value" id="stat-last">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="backup-card">
+                <h3>📁 Local Files Status</h3>
+                <p>Critical files that will be backed up:</p>
+                <div class="file-list" id="local-files">
+                    <div class="file-item">
+                        <span>Loading...</span>
+                    </div>
+                </div>
+                <div class="stats-row" style="margin-top: 1rem;">
+                    <span class="stats-label">Total Local Size</span>
+                    <span class="stats-value" id="local-size">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Backup Section -->
+        <div class="backup-card" style="margin-bottom: 1.5rem;">
+            <h3>🚀 Create Disaster Recovery Backup</h3>
+            <p>Create a complete backup of all critical files to Azure Blob Storage.</p>
+            
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="backup-description">Backup Description (optional)</label>
+                <input type="text" id="backup-description" placeholder="e.g., Before model training, After annotation session">
+            </div>
+            
+            <div class="progress-container" id="backup-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="backup-progress-fill" style="width: 0%">0%</div>
+                </div>
+                <p id="backup-status-text" style="margin-top: 0.5rem; color: #666;">Preparing backup...</p>
+            </div>
+            
+            <button class="btn btn-primary" id="btn-create-backup" onclick="createDRBackup()">
+                💾 Create Full Backup
+            </button>
+            
+            <div id="backup-result" style="margin-top: 1rem;"></div>
+        </div>
+
+        <!-- Restore Section -->
+        <div class="backup-card danger" style="margin-bottom: 1.5rem;">
+            <h3>🔄 Restore from Backup</h3>
+            
+            <div class="restore-warning">
+                <strong>⚠️ Warning:</strong> Restoring will overwrite existing local files. 
+                Make sure you want to restore before proceeding.
+            </div>
+            
+            <h4>Available Disaster Recovery Backups:</h4>
+            <div class="backup-list" id="dr-backups">
+                <p class="text-muted">Loading backups...</p>
+            </div>
+            
+            <div id="restore-result" style="margin-top: 1rem;"></div>
+        </div>
+
+        <!-- Auto Backup Settings -->
+        <div class="backup-card">
+            <h3>⏰ Automatic Backup Schedule</h3>
+            <p>Configure automatic disaster recovery backups that run while the application is active.</p>
+            
+            <div id="schedule-status" class="schedule-status" style="margin-bottom: 1rem;">
+                <div class="stats-row">
+                    <span class="stats-label">Status:</span>
+                    <span class="stats-value" id="schedule-enabled">Loading...</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stats-label">Interval:</span>
+                    <span class="stats-value" id="schedule-interval">-</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stats-label">Last Backup:</span>
+                    <span class="stats-value" id="schedule-last">-</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stats-label">Next Backup:</span>
+                    <span class="stats-value" id="schedule-next">-</span>
+                </div>
+            </div>
+            
+            <div class="schedule-form">
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="auto-enabled" onchange="toggleAutoBackup()">
+                        Enable Automatic Backups
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="auto-interval">Backup Interval</label>
+                    <select id="auto-interval" onchange="updateScheduleInterval()">
+                        <option value="1">Every Hour</option>
+                        <option value="6">Every 6 Hours</option>
+                        <option value="12">Every 12 Hours</option>
+                        <option value="24" selected>Daily (24 Hours)</option>
+                        <option value="48">Every 2 Days</option>
+                        <option value="168">Weekly</option>
+                    </select>
+                </div>
+                <button class="btn btn-secondary" onclick="triggerBackupNow()">
+                    ⚡ Backup Now
+                </button>
+                <button class="btn btn-outline" onclick="loadScheduleStatus()" style="margin-left: 0.5rem;">
+                    🔄 Refresh Status
+                </button>
+            </div>
+            
+            <div id="schedule-result" style="margin-top: 1rem;"></div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 IFS Activity Transformer. MIT License.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshStatus();
+            loadDRBackups();
+            loadScheduleStatus();
+        });
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatDate(isoString) {
+            if (!isoString) return 'N/A';
+            const date = new Date(isoString);
+            return date.toLocaleString();
+        }
+
+        // =========================================================================
+        // SCHEDULE MANAGEMENT
+        // =========================================================================
+
+        async function loadScheduleStatus() {
+            try {
+                const response = await fetch('/api/backup/schedule/status');
+                const data = await response.json();
+                
+                if (data.success !== false) {
+                    const schedule = data.data || data;
+                    
+                    document.getElementById('auto-enabled').checked = schedule.enabled || false;
+                    document.getElementById('auto-interval').value = schedule.interval_hours || 24;
+                    
+                    const statusText = schedule.enabled ? 
+                        '<span style="color: #2e7d32;">✅ Enabled</span>' : 
+                        '<span style="color: #c62828;">❌ Disabled</span>';
+                    document.getElementById('schedule-enabled').innerHTML = statusText;
+                    document.getElementById('schedule-interval').textContent = schedule.interval_display || '-';
+                    document.getElementById('schedule-last').textContent = schedule.last_backup_display || 'Never';
+                    document.getElementById('schedule-next').textContent = schedule.next_backup_display || 'Not scheduled';
+                }
+            } catch (error) {
+                console.error('Error loading schedule status:', error);
+            }
+        }
+
+        async function toggleAutoBackup() {
+            const enabled = document.getElementById('auto-enabled').checked;
+            const intervalHours = parseInt(document.getElementById('auto-interval').value);
+            
+            await configureSchedule(enabled, intervalHours);
+        }
+
+        async function updateScheduleInterval() {
+            const enabled = document.getElementById('auto-enabled').checked;
+            const intervalHours = parseInt(document.getElementById('auto-interval').value);
+            
+            if (enabled) {
+                await configureSchedule(enabled, intervalHours);
+            }
+        }
+
+        async function configureSchedule(enabled, intervalHours) {
+            const resultDiv = document.getElementById('schedule-result');
+            
+            try {
+                const response = await fetch('/api/backup/schedule/configure', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled, interval_hours: intervalHours })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success !== false && response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            ✅ Schedule ${enabled ? 'enabled' : 'disabled'} successfully!
+                        </div>
+                    `;
+                    loadScheduleStatus();
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            ❌ ${data.error || data.message || 'Failed to update schedule'}
+                        </div>
+                    `;
+                    // Reset checkbox if failed
+                    document.getElementById('auto-enabled').checked = !enabled;
+                }
+                
+                setTimeout(() => { resultDiv.innerHTML = ''; }, 5000);
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        ❌ Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function triggerBackupNow() {
+            const resultDiv = document.getElementById('schedule-result');
+            resultDiv.innerHTML = '<div class="alert alert-warning">⏳ Triggering backup...</div>';
+            
+            try {
+                const response = await fetch('/api/backup/schedule/trigger', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description: 'Manual trigger from Backup UI' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success !== false && response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            ✅ Backup created! ${data.data?.files_backed_up?.length || 0} files backed up.
+                        </div>
+                    `;
+                    loadScheduleStatus();
+                    loadDRBackups();
+                    refreshStatus();
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            ❌ ${data.error || data.message || 'Backup failed'}
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        ❌ Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // =========================================================================
+        // STATUS AND FILE MANAGEMENT
+        // =========================================================================
+
+        async function refreshStatus() {
+            try {
+                const response = await fetch('/api/backup/status');
+                const data = await response.json();
+                
+                // Update Azure status
+                const statusDiv = document.getElementById('azure-status');
+                if (data.backup_enabled) {
+                    statusDiv.innerHTML = `
+                        <div class="status-indicator enabled">
+                            <span class="status-dot"></span>
+                            <span>Connected to Azure Blob Storage</span>
+                        </div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="status-indicator disabled">
+                            <span class="status-dot"></span>
+                            <span>Not Connected - Set AZURE_STORAGE_CONNECTION_STRING</span>
+                        </div>
+                    `;
+                }
+                
+                // Update stats
+                const stats = data.statistics || {};
+                document.getElementById('stat-total').textContent = stats.total_backups || 0;
+                document.getElementById('stat-size').textContent = 
+                    stats.total_size_mb ? `${stats.total_size_mb} MB` : '0 MB';
+                document.getElementById('stat-dr').textContent = 
+                    stats.by_type?.disaster_recovery || 0;
+                document.getElementById('stat-last').textContent = 
+                    stats.latest_backup ? formatDate(stats.latest_backup.created) : 'Never';
+                
+                // Update local files
+                const localFiles = data.local_files || {};
+                const fileListDiv = document.getElementById('local-files');
+                let fileHtml = '';
+                
+                const allFiles = [
+                    ...(localFiles.data_files || []),
+                    ...(localFiles.config_files || []),
+                    ...(localFiles.model_files || [])
+                ];
+                
+                for (const file of allFiles) {
+                    const statusClass = file.exists ? 'exists' : 'missing';
+                    const statusIcon = file.exists ? '✅' : '❌';
+                    fileHtml += `
+                        <div class="file-item ${statusClass}">
+                            <div>
+                                <div class="file-name">${file.path}</div>
+                                ${file.exists ? `<div class="file-size">${formatBytes(file.size)}</div>` : ''}
+                            </div>
+                            <span class="file-status">${statusIcon}</span>
+                        </div>
+                    `;
+                }
+                
+                fileListDiv.innerHTML = fileHtml || '<div class="file-item">No files found</div>';
+                document.getElementById('local-size').textContent = 
+                    formatBytes(localFiles.total_size_bytes || 0);
+                
+            } catch (error) {
+                console.error('Error refreshing status:', error);
+            }
+        }
+
+        async function loadDRBackups() {
+            try {
+                const response = await fetch('/api/backup/disaster-recovery/list');
+                const data = await response.json();
+                
+                const backupsDiv = document.getElementById('dr-backups');
+                
+                if (!data.backups || data.backups.length === 0) {
+                    backupsDiv.innerHTML = '<p class="text-muted">No disaster recovery backups found.</p>';
+                    return;
+                }
+                
+                let html = '';
+                for (const backup of data.backups) {
+                    const timestamp = formatDate(backup.timestamp);
+                    const size = formatBytes(backup.total_size_bytes || 0);
+                    const fileCount = backup.total_files || 0;
+                    
+                    html += `
+                        <div class="backup-item">
+                            <div class="backup-header">
+                                <span class="backup-timestamp">📦 ${timestamp}</span>
+                                <span class="backup-size">${size}</span>
+                            </div>
+                            ${backup.description ? `<div class="backup-description">${backup.description}</div>` : ''}
+                            <div class="backup-files">${fileCount} files backed up</div>
+                            <div class="backup-actions">
+                                <button class="btn btn-sm btn-secondary" onclick="showBackupDetails('${backup.folder}')">
+                                    📋 Details
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="restoreBackup('${backup.folder}')">
+                                    🔄 Restore
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                backupsDiv.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading backups:', error);
+                document.getElementById('dr-backups').innerHTML = 
+                    '<p class="text-muted">Error loading backups.</p>';
+            }
+        }
+
+        async function createDRBackup() {
+            const btn = document.getElementById('btn-create-backup');
+            const progressContainer = document.getElementById('backup-progress');
+            const progressFill = document.getElementById('backup-progress-fill');
+            const statusText = document.getElementById('backup-status-text');
+            const resultDiv = document.getElementById('backup-result');
+            
+            btn.disabled = true;
+            btn.textContent = '⏳ Creating Backup...';
+            progressContainer.style.display = 'block';
+            resultDiv.innerHTML = '';
+            
+            // Simulate progress
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                if (progress < 90) {
+                    progress += 10;
+                    progressFill.style.width = progress + '%';
+                    progressFill.textContent = progress + '%';
+                    
+                    if (progress < 30) statusText.textContent = 'Preparing files...';
+                    else if (progress < 60) statusText.textContent = 'Uploading to Azure...';
+                    else statusText.textContent = 'Finalizing backup...';
+                }
+            }, 500);
+            
+            try {
+                const description = document.getElementById('backup-description').value;
+                
+                const response = await fetch('/api/backup/disaster-recovery/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description })
+                });
+                
+                const data = await response.json();
+                
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+                progressFill.textContent = '100%';
+                
+                if (data.success) {
+                    statusText.textContent = 'Backup complete!';
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>✅ Backup Created Successfully!</strong><br>
+                            ${data.files_backed_up?.length || 0} files backed up (${formatBytes(data.total_size_bytes || 0)})<br>
+                            Backup folder: <code>${data.backup_folder}</code>
+                        </div>
+                    `;
+                    
+                    // Refresh lists
+                    refreshStatus();
+                    loadDRBackups();
+                } else {
+                    statusText.textContent = 'Backup failed';
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <strong>❌ Backup Failed</strong><br>
+                            ${data.error || data.message || 'Unknown error'}
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                clearInterval(progressInterval);
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>❌ Error</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '💾 Create Full Backup';
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                }, 2000);
+            }
+        }
+
+        function showBackupDetails(folder) {
+            // Find the backup in the list
+            fetch('/api/backup/disaster-recovery/list')
+                .then(r => r.json())
+                .then(data => {
+                    const backup = data.backups.find(b => b.folder === folder);
+                    if (backup && backup.files) {
+                        const fileList = backup.files.map(f => 
+                            `• ${f.local_path} (${formatBytes(f.size)})`
+                        ).join('\n');
+                        alert(`Backup: ${folder}\n\nFiles:\n${fileList}`);
+                    }
+                });
+        }
+
+        async function restoreBackup(folder) {
+            if (!confirm(`⚠️ WARNING: This will overwrite existing local files!\n\nAre you sure you want to restore from:\n${folder}?`)) {
+                return;
+            }
+            
+            if (!confirm('This is your final confirmation. Proceed with restore?')) {
+                return;
+            }
+            
+            const resultDiv = document.getElementById('restore-result');
+            resultDiv.innerHTML = '<div class="alert alert-warning">🔄 Restoring backup... Please wait.</div>';
+            
+            try {
+                const response = await fetch('/api/backup/disaster-recovery/restore', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ backup_folder: folder })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>✅ Restore Successful!</strong><br>
+                            ${data.files_restored?.length || 0} files restored.<br>
+                            You may need to restart the application for changes to take effect.
+                        </div>
+                    `;
+                    refreshStatus();
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <strong>❌ Restore Failed</strong><br>
+                            ${data.error || data.message || 'Unknown error'}
+                            ${data.files_failed?.length ? `<br>Failed files: ${data.files_failed.length}` : ''}
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>❌ Error</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

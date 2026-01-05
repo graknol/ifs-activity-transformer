@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predictions - IFS Activity Transformer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="navbar-brand">IFS Activity Transformer</h1>
+            <ul class="navbar-nav">
+                <li><a href="/">Home</a></li>
+                <li><a href="/database">Data</a></li>
+                <li><a href="/bootstrap">Bootstrap</a></li>
+                <li><a href="/annotate">Annotate</a></li>
+                <li><a href="/train">Train</a></li>
+                <li><a href="/predict" class="active">Predict</a></li>
+                <li><a href="/backup">Backup</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Make Predictions</h2>
+        
+        <div class="card">
+            <h3>Single Prediction</h3>
+            <p>Enter an activity description to predict its mapping</p>
+            
+            <div class="form-group">
+                <label for="single-text">Activity Description:</label>
+                <textarea id="single-text" rows="4" 
+                          placeholder="Enter activity description here..."></textarea>
+            </div>
+            
+            <button class="btn btn-primary" onclick="predictSingle()">
+                Predict
+            </button>
+            
+            <div id="single-result" style="display: none;">
+                <h4>Prediction Result</h4>
+                <div class="prediction-card">
+                    <p><strong>Predicted Activity Path:</strong></p>
+                    <p id="predicted-path" class="prediction-value"></p>
+                    <p><strong>Confidence:</strong> <span id="confidence"></span></p>
+                    <div class="confidence-bar">
+                        <div id="confidence-fill" class="confidence-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Batch Prediction</h3>
+            <p>Enter multiple activity descriptions (one per line)</p>
+            
+            <div class="form-group">
+                <label for="batch-text">Activity Descriptions:</label>
+                <textarea id="batch-text" rows="8" 
+                          placeholder="Enter activity descriptions, one per line..."></textarea>
+            </div>
+            
+            <button class="btn btn-primary" onclick="predictBatch()">
+                Predict All
+            </button>
+            
+            <div id="batch-results" style="display: none;">
+                <h4>Batch Prediction Results</h4>
+                <div class="table-container">
+                    <table id="results-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Activity Description</th>
+                                <th>Predicted Path</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-body"></tbody>
+                    </table>
+                </div>
+                <button class="btn btn-secondary" onclick="downloadResults()">
+                    Download Results CSV
+                </button>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>Using Predictions</h3>
+            <p>
+                The model provides predictions with confidence scores. Higher confidence 
+                indicates the model is more certain about the prediction.
+            </p>
+            <h4>Confidence Interpretation:</h4>
+            <ul>
+                <li><strong>&gt; 90%:</strong> Very high confidence - likely correct</li>
+                <li><strong>70-90%:</strong> Good confidence - review recommended</li>
+                <li><strong>50-70%:</strong> Moderate confidence - manual verification needed</li>
+                <li><strong>&lt; 50%:</strong> Low confidence - manual mapping recommended</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/predict.js') }}"></script>
+</body>
+</html>

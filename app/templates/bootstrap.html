@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bootstrap Training - IFS Activity Transformer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .workflow-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        .workflow-steps::before {
+            content: '';
+            position: absolute;
+            top: 25px;
+            left: 50px;
+            right: 50px;
+            height: 3px;
+            background: #e0e0e0;
+            z-index: 0;
+        }
+        .workflow-step {
+            text-align: center;
+            z-index: 1;
+            flex: 1;
+        }
+        .step-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.5rem;
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #666;
+        }
+        .step-circle.active {
+            background: #4CAF50;
+            color: white;
+        }
+        .step-circle.completed {
+            background: #2196F3;
+            color: white;
+        }
+        .step-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .section-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section-card h3 {
+            margin-top: 0;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 0.5rem;
+        }
+        .form-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .form-group {
+            flex: 1;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .status-badge.ready { background: #e8f5e9; color: #2e7d32; }
+        .status-badge.pending { background: #fff3e0; color: #ef6c00; }
+        .status-badge.error { background: #ffebee; color: #c62828; }
+        .export-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .stat-box {
+            background: #f5f5f5;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-box .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2196F3;
+        }
+        .stat-box .label {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        .progress-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.3s ease;
+        }
+        .sample-preview {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 1rem;
+        }
+        .sample-item {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        .sample-item:last-child {
+            border-bottom: none;
+        }
+        .sample-item .activity-desc {
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        .sample-item .meta {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        .recommendations {
+            background: #e3f2fd;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+        .recommendations h4 {
+            margin-top: 0;
+            color: #1565c0;
+        }
+        .recommendations ul {
+            margin-bottom: 0;
+        }
+        .training-history {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .history-item {
+            padding: 0.75rem;
+            border-left: 3px solid #4CAF50;
+            margin-bottom: 0.5rem;
+            background: #f9f9f9;
+        }
+        .history-item .session-id {
+            font-weight: 500;
+        }
+        .history-item .metrics {
+            font-size: 0.85rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="navbar-brand">IFS Activity Transformer</h1>
+            <ul class="navbar-nav">
+                <li><a href="/">Home</a></li>
+                <li><a href="/database">Data</a></li>
+                <li><a href="/bootstrap" class="active">Bootstrap</a></li>
+                <li><a href="/annotate">Annotate</a></li>
+                <li><a href="/train">Train</a></li>
+                <li><a href="/predict">Predict</a></li>
+                <li><a href="/backup">Backup</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Bootstrap Training & Active Learning</h2>
+        <p>Generate diverse initial training samples, annotate them, and iteratively improve the model.</p>
+
+        <!-- Workflow Progress -->
+        <div class="workflow-steps">
+            <div class="workflow-step">
+                <div class="step-circle" id="step1">1</div>
+                <div class="step-label">Load Data</div>
+            </div>
+            <div class="workflow-step">
+                <div class="step-circle" id="step2">2</div>
+                <div class="step-label">Generate Sample</div>
+            </div>
+            <div class="workflow-step">
+                <div class="step-circle" id="step3">3</div>
+                <div class="step-label">Annotate</div>
+            </div>
+            <div class="workflow-step">
+                <div class="step-circle" id="step4">4</div>
+                <div class="step-label">Train Model</div>
+            </div>
+            <div class="workflow-step">
+                <div class="step-circle" id="step5">5</div>
+                <div class="step-label">Active Learning</div>
+            </div>
+        </div>
+
+        <!-- Status Overview -->
+        <div class="section-card">
+            <h3>📊 Status Overview</h3>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="value" id="stat-data">-</div>
+                    <div class="label">Training Data Rows</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="stat-bootstrap">-</div>
+                    <div class="label">Bootstrap Samples</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="stat-annotated">-</div>
+                    <div class="label">Annotated</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="stat-pending">-</div>
+                    <div class="label">Pending Retrain</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="stat-sessions">-</div>
+                    <div class="label">Training Sessions</div>
+                </div>
+            </div>
+            <div id="recommendations-container" style="display: none;">
+                <div class="recommendations">
+                    <h4>💡 Recommendations</h4>
+                    <ul id="recommendations-list"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 1: Generate Bootstrap Sample -->
+        <div class="section-card">
+            <h3>🎲 Step 1: Generate Diverse Bootstrap Sample</h3>
+            <p>Select a diverse subset of activities using embedding-based similarity to maximize coverage.</p>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="n-samples">Number of Samples</label>
+                    <input type="number" id="n-samples" value="200" min="50" max="1000">
+                </div>
+                <div class="form-group">
+                    <label for="diversity-method">Selection Method</label>
+                    <select id="diversity-method">
+                        <option value="embeddings">Embedding Diversity (Recommended)</option>
+                        <option value="random">Random Sampling</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" id="btn-generate" onclick="generateBootstrapSample()">
+                🎲 Generate Diverse Sample
+            </button>
+            
+            <div id="generate-result" style="display: none; margin-top: 1rem;">
+                <span class="status-badge ready" id="generate-status"></span>
+            </div>
+        </div>
+
+        <!-- Step 2: Export for Annotation -->
+        <div class="section-card">
+            <h3>📤 Step 2: Export Sample for Annotation</h3>
+            <p>Export the bootstrap sample in a format suitable for annotation (by you, a team, or an LLM).</p>
+            
+            <div class="export-buttons">
+                <button class="btn btn-secondary" onclick="exportBootstrap('json')">
+                    📄 Export JSON
+                </button>
+                <button class="btn btn-secondary" onclick="exportBootstrap('csv')">
+                    📊 Export CSV
+                </button>
+                <button class="btn btn-secondary" onclick="exportBootstrap('markdown')">
+                    📝 Export Markdown (for LLM)
+                </button>
+            </div>
+            
+            <div id="export-result" style="display: none; margin-top: 1rem;"></div>
+            
+            <!-- Sample Preview -->
+            <div id="sample-preview" class="sample-preview" style="display: none;">
+                <div id="sample-items"></div>
+            </div>
+        </div>
+
+        <!-- Step 3: Import Annotated Data -->
+        <div class="section-card">
+            <h3>📥 Step 3: Import Annotated Data</h3>
+            <p>Upload your annotated data back into the system, or load existing annotations from disk.</p>
+            
+            <!-- Existing Annotations Detection -->
+            <div id="existing-annotations-alert" style="display: none; background: #e8f5e9; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #4CAF50;">
+                <strong>✅ Existing Annotations Found!</strong>
+                <p id="existing-annotations-info" style="margin: 0.5rem 0;"></p>
+                <button class="btn btn-primary" onclick="loadExistingAnnotations()">
+                    📂 Load Existing Annotations
+                </button>
+            </div>
+            
+            <div class="form-group">
+                <label for="file-upload">Or Upload Annotated File (CSV or JSON)</label>
+                <input type="file" id="file-upload" accept=".csv,.json">
+            </div>
+            
+            <button class="btn btn-secondary" onclick="importAnnotations()">
+                📥 Import from File
+            </button>
+            
+            <div id="import-result" style="display: none; margin-top: 1rem;"></div>
+            
+            <!-- Annotation Preview -->
+            <div id="annotation-preview" style="display: none; margin-top: 1rem;">
+                <h4>Loaded Annotations Preview</h4>
+                <div id="preview-table" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px;"></div>
+            </div>
+        </div>
+
+        <!-- Step 4: Train Model -->
+        <div class="section-card">
+            <h3>🤖 Step 4: Train Initial Model</h3>
+            <p>Train the model on the annotated bootstrap data.</p>
+            
+            <!-- Basic Settings -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="epochs">Epochs (auto if blank)</label>
+                    <input type="number" id="epochs" placeholder="Auto" min="1" max="50">
+                </div>
+                <div class="form-group">
+                    <label for="early-stopping">
+                        <input type="checkbox" id="early-stopping" checked> Use Early Stopping
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Advanced Hyperparameters (Collapsible) -->
+            <details class="hyperparameters-panel" style="margin-top: 1rem;">
+                <summary style="cursor: pointer; font-weight: 600; padding: 0.5rem; background: #f5f5f5; border-radius: 4px;">
+                    ⚙️ Advanced Hyperparameters
+                </summary>
+                <div style="padding: 1rem; background: #fafafa; border-radius: 0 0 4px 4px; margin-top: 0.5rem;">
+                    
+                    <!-- Learning Rate -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="learning-rate">Learning Rate</label>
+                            <select id="learning-rate">
+                                <option value="1e-5">1e-5 (Conservative)</option>
+                                <option value="2e-5" selected>2e-5 (Default)</option>
+                                <option value="3e-5">3e-5 (Moderate)</option>
+                                <option value="5e-5">5e-5 (Aggressive)</option>
+                                <option value="1e-4">1e-4 (Fast)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="batch-size">Batch Size</label>
+                            <select id="batch-size">
+                                <option value="4">4 (Low Memory)</option>
+                                <option value="8" selected>8 (Default)</option>
+                                <option value="16">16 (More Memory)</option>
+                                <option value="32">32 (High Memory)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Regularization -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dropout">Dropout Rate</label>
+                            <select id="dropout">
+                                <option value="0.0">0.0 (No Dropout)</option>
+                                <option value="0.1" selected>0.1 (Default)</option>
+                                <option value="0.2">0.2 (Moderate)</option>
+                                <option value="0.3">0.3 (High)</option>
+                                <option value="0.5">0.5 (Very High)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="weight-decay">Weight Decay (L2)</label>
+                            <select id="weight-decay">
+                                <option value="0.0">0.0 (No Decay)</option>
+                                <option value="0.01" selected>0.01 (Default)</option>
+                                <option value="0.001">0.001 (Light)</option>
+                                <option value="0.1">0.1 (Strong)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Scheduler & Warmup -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="scheduler">Learning Rate Scheduler</label>
+                            <select id="scheduler">
+                                <option value="linear" selected>Linear Decay</option>
+                                <option value="cosine">Cosine Annealing</option>
+                                <option value="constant">Constant</option>
+                                <option value="cosine_with_restarts">Cosine with Restarts</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="warmup-ratio">Warmup Ratio</label>
+                            <select id="warmup-ratio">
+                                <option value="0.0">0% (No Warmup)</option>
+                                <option value="0.06" selected>6% (Default)</option>
+                                <option value="0.1">10% (Moderate)</option>
+                                <option value="0.2">20% (Long Warmup)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Model Architecture -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="max-length">Max Sequence Length</label>
+                            <select id="max-length">
+                                <option value="128">128 (Fast)</option>
+                                <option value="256">256 (Balanced)</option>
+                                <option value="512" selected>512 (Default)</option>
+                                <option value="1024">1024 (Long Text)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="hidden-dim">Hidden Dimension</label>
+                            <select id="hidden-dim">
+                                <option value="128">128 (Small)</option>
+                                <option value="256" selected>256 (Default)</option>
+                                <option value="512">512 (Large)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Early Stopping Config -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="patience">Early Stopping Patience</label>
+                            <select id="patience">
+                                <option value="2">2 epochs</option>
+                                <option value="3" selected>3 epochs (Default)</option>
+                                <option value="5">5 epochs</option>
+                                <option value="10">10 epochs</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="min-delta">Min Improvement Delta</label>
+                            <select id="min-delta">
+                                <option value="0.0001">0.0001 (Sensitive)</option>
+                                <option value="0.001" selected>0.001 (Default)</option>
+                                <option value="0.01">0.01 (Relaxed)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Presets -->
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #ddd;">
+                        <label style="font-weight: 600;">Quick Presets:</label>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-sm btn-outline" onclick="applyPreset('default')">
+                                🎯 Default
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline" onclick="applyPreset('small_data')">
+                                📊 Small Data (&lt;500)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline" onclick="applyPreset('large_data')">
+                                📈 Large Data (&gt;5000)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline" onclick="applyPreset('fast')">
+                                ⚡ Fast Training
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline" onclick="applyPreset('regularized')">
+                                🛡️ High Regularization
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </details>
+            
+            <button class="btn btn-primary" id="btn-train" onclick="triggerTraining()" style="margin-top: 1rem;">
+                🚀 Start Training
+            </button>
+            
+            <div id="training-progress" style="display: none; margin-top: 1rem;">
+                <div class="progress-bar">
+                    <div class="fill" id="training-fill" style="width: 0%"></div>
+                </div>
+                <p id="training-message">Initializing...</p>
+            </div>
+            
+            <div id="training-result" style="display: none; margin-top: 1rem;"></div>
+        </div>
+
+        <!-- Training History -->
+        <div class="section-card">
+            <h3>📜 Training History</h3>
+            <div class="training-history" id="training-history">
+                <p class="text-muted">No training sessions yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 IFS Activity Transformer. MIT License.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshStatus();
+        });
+
+        // Refresh all status information
+        async function refreshStatus() {
+            try {
+                // Get bootstrap status
+                const bootstrapResp = await fetch('/api/bootstrap/status');
+                const bootstrapData = await bootstrapResp.json();
+                
+                // Get training status  
+                const trainingResp = await fetch('/api/training/status');
+                const trainingData = await trainingResp.json();
+                
+                // Update stats
+                document.getElementById('stat-data').textContent = 
+                    bootstrapData.training_data_count || 0;
+                document.getElementById('stat-bootstrap').textContent = 
+                    bootstrapData.bootstrap_sample_count || 0;
+                document.getElementById('stat-annotated').textContent = 
+                    bootstrapData.annotated_count || trainingData.annotations?.total_annotations || 0;
+                document.getElementById('stat-pending').textContent = 
+                    trainingData.annotations?.pending_for_training || 0;
+                document.getElementById('stat-sessions').textContent = 
+                    trainingData.training_sessions || 0;
+                
+                // Check for existing annotations on disk
+                if (bootstrapData.has_annotated_bootstrap) {
+                    const alertDiv = document.getElementById('existing-annotations-alert');
+                    const infoDiv = document.getElementById('existing-annotations-info');
+                    alertDiv.style.display = 'block';
+                    infoDiv.textContent = `Found ${bootstrapData.annotated_count || 0} annotated samples (${bootstrapData.labeled_count || 0} labeled) in ${bootstrapData.annotated_csv_path || bootstrapData.annotated_json_path}`;
+                }
+                
+                // Update workflow steps
+                updateWorkflowSteps(bootstrapData, trainingData);
+                
+                // Update recommendations
+                if (trainingData.recommendations && trainingData.recommendations.length > 0) {
+                    document.getElementById('recommendations-container').style.display = 'block';
+                    const list = document.getElementById('recommendations-list');
+                    list.innerHTML = trainingData.recommendations
+                        .map(r => `<li>${r}</li>`).join('');
+                } else {
+                    document.getElementById('recommendations-container').style.display = 'none';
+                }
+                
+                // Update training history
+                updateTrainingHistory(trainingData);
+                
+            } catch (error) {
+                console.error('Error refreshing status:', error);
+            }
+        }
+
+        function updateWorkflowSteps(bootstrapData, trainingData) {
+            const step1 = document.getElementById('step1');
+            const step2 = document.getElementById('step2');
+            const step3 = document.getElementById('step3');
+            const step4 = document.getElementById('step4');
+            const step5 = document.getElementById('step5');
+            
+            // Step 1: Load Data
+            if (bootstrapData.has_training_data) {
+                step1.classList.add('completed');
+            }
+            
+            // Step 2: Generate Sample
+            if (bootstrapData.has_bootstrap_sample) {
+                step2.classList.add('completed');
+            } else if (bootstrapData.has_training_data) {
+                step2.classList.add('active');
+            }
+            
+            // Step 3: Annotate
+            if (bootstrapData.has_annotated_bootstrap || 
+                (trainingData.annotations?.total_annotations || 0) > 0) {
+                step3.classList.add('completed');
+            } else if (bootstrapData.has_bootstrap_sample) {
+                step3.classList.add('active');
+            }
+            
+            // Step 4: Train Model
+            if (trainingData.training_sessions > 0) {
+                step4.classList.add('completed');
+            } else if (bootstrapData.has_annotated_bootstrap || trainingData.annotations?.ready_for_initial_train) {
+                step4.classList.add('active');
+            }
+            
+            // Step 5: Active Learning
+            if (trainingData.training_sessions > 0) {
+                step5.classList.add('active');
+            }
+        }
+
+        function updateTrainingHistory(trainingData) {
+            const container = document.getElementById('training-history');
+            
+            if (!trainingData.last_training) {
+                container.innerHTML = '<p class="text-muted">No training sessions yet.</p>';
+                return;
+            }
+            
+            // Fetch full history
+            fetch('/api/training/history')
+                .then(resp => resp.json())
+                .then(data => {
+                    if (!data.sessions || data.sessions.length === 0) {
+                        container.innerHTML = '<p class="text-muted">No training sessions yet.</p>';
+                        return;
+                    }
+                    
+                    container.innerHTML = data.sessions.reverse().map(session => `
+                        <div class="history-item">
+                            <div class="session-id">Session: ${session.session_id}</div>
+                            <div class="metrics">
+                                Samples: ${session.n_samples} | 
+                                New: ${session.n_new_samples} | 
+                                Epochs: ${session.epochs}
+                            </div>
+                            <div class="metrics">
+                                ${session.timestamp}
+                            </div>
+                        </div>
+                    `).join('');
+                });
+        }
+
+        async function generateBootstrapSample() {
+            const btn = document.getElementById('btn-generate');
+            btn.disabled = true;
+            btn.textContent = '⏳ Generating...';
+            
+            try {
+                const nSamples = parseInt(document.getElementById('n-samples').value) || 200;
+                const method = document.getElementById('diversity-method').value;
+                
+                const response = await fetch('/api/bootstrap/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        n_samples: nSamples,
+                        diversity_method: method
+                    })
+                });
+                
+                const data = await response.json();
+                
+                const resultDiv = document.getElementById('generate-result');
+                const statusBadge = document.getElementById('generate-status');
+                resultDiv.style.display = 'block';
+                
+                if (data.success) {
+                    statusBadge.className = 'status-badge ready';
+                    statusBadge.textContent = `✅ Generated ${data.n_samples} diverse samples`;
+                } else {
+                    statusBadge.className = 'status-badge error';
+                    statusBadge.textContent = `❌ ${data.error}`;
+                }
+                
+                refreshStatus();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                const resultDiv = document.getElementById('generate-result');
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<span class="status-badge error">❌ ${error.message}</span>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🎲 Generate Diverse Sample';
+            }
+        }
+
+        async function exportBootstrap(format) {
+            try {
+                const response = await fetch('/api/bootstrap/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ format: format })
+                });
+                
+                const data = await response.json();
+                
+                const resultDiv = document.getElementById('export-result');
+                resultDiv.style.display = 'block';
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <span class="status-badge ready">✅ Exported ${data.n_samples} samples to ${format}</span>
+                        <br><br>
+                        <a href="/api/bootstrap/download/${format}" class="btn btn-secondary">
+                            ⬇️ Download ${format.toUpperCase()} File
+                        </a>
+                    `;
+                    
+                    // Show preview for JSON
+                    if (format === 'json' && data.data) {
+                        showSamplePreview(data.data);
+                    }
+                } else {
+                    resultDiv.innerHTML = `<span class="status-badge error">❌ ${data.error}</span>`;
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                const resultDiv = document.getElementById('export-result');
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<span class="status-badge error">❌ ${error.message}</span>`;
+            }
+        }
+
+        function showSamplePreview(data) {
+            const previewDiv = document.getElementById('sample-preview');
+            const itemsDiv = document.getElementById('sample-items');
+            
+            previewDiv.style.display = 'block';
+            
+            const samples = data.samples.slice(0, 10); // Show first 10
+            itemsDiv.innerHTML = samples.map((sample, i) => `
+                <div class="sample-item">
+                    <div class="activity-desc">${i + 1}. ${sample.ACTIVITY_DESCRIPTION || sample.description || 'N/A'}</div>
+                    <div class="meta">
+                        Project: ${sample.PROJECT_ID || sample.project_id || 'N/A'} | 
+                        Sub-project: ${sample.SUB_PROJECT_ID || sample.sub_project_id || 'N/A'} |
+                        Activity: ${sample.ACTIVITY_NO || sample.activity_no || 'N/A'}
+                    </div>
+                </div>
+            `).join('') + `<div class="sample-item"><em>... showing 10 of ${data.samples.length} samples</em></div>`;
+        }
+
+        async function importAnnotations() {
+            const fileInput = document.getElementById('file-upload');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file to upload');
+                return;
+            }
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch('/api/bootstrap/import', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                const resultDiv = document.getElementById('import-result');
+                resultDiv.style.display = 'block';
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <span class="status-badge ready">
+                            ✅ Imported ${data.imported_count} samples (${data.labeled_count} labeled)
+                        </span>
+                        ${data.ready_for_training ? '<br><br><strong>Ready for training!</strong>' : ''}
+                    `;
+                    refreshStatus();
+                } else {
+                    resultDiv.innerHTML = `<span class="status-badge error">❌ ${data.error || data.warning}</span>`;
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                const resultDiv = document.getElementById('import-result');
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<span class="status-badge error">❌ ${error.message}</span>`;
+            }
+        }
+
+        async function loadExistingAnnotations() {
+            try {
+                const response = await fetch('/api/bootstrap/load-existing', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                const resultDiv = document.getElementById('import-result');
+                resultDiv.style.display = 'block';
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <span class="status-badge ready">✅ Loaded ${data.total_samples} annotated samples</span>
+                        <div style="margin-top: 0.5rem; font-size: 0.9rem; color: #666;">
+                            Source: ${data.source}<br>
+                            Labels: ${Object.entries(data.label_counts || {}).map(([k, v]) => `${k}: ${v}`).join(', ')}
+                        </div>
+                    `;
+                    
+                    // Show preview
+                    if (data.sample_preview && data.sample_preview.length > 0) {
+                        showAnnotationPreview(data.sample_preview);
+                    }
+                    
+                    // Hide the alert since we loaded it
+                    document.getElementById('existing-annotations-alert').style.display = 'none';
+                    
+                    refreshStatus();
+                } else {
+                    resultDiv.innerHTML = `<span class="status-badge error">❌ ${data.error}</span>`;
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                const resultDiv = document.getElementById('import-result');
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<span class="status-badge error">❌ ${error.message}</span>`;
+            }
+        }
+
+        function showAnnotationPreview(samples) {
+            const previewDiv = document.getElementById('annotation-preview');
+            const tableDiv = document.getElementById('preview-table');
+            
+            previewDiv.style.display = 'block';
+            
+            let html = '<table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">';
+            html += '<tr style="background: #f5f5f5;"><th style="padding: 0.5rem; text-align: left;">Description</th><th>Phase</th><th>Discipline</th><th>Work Type</th></tr>';
+            
+            for (const s of samples) {
+                const desc = (s.ACTIVITY_DESCRIPTION || '').substring(0, 40) + '...';
+                html += `<tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 0.5rem;">${desc}</td>
+                    <td style="padding: 0.5rem;">${s.PHASE_LABEL || '-'}</td>
+                    <td style="padding: 0.5rem;">${s.DISCIPLINE_LABEL || '-'}</td>
+                    <td style="padding: 0.5rem;">${s.WORK_TYPE_LABEL || '-'}</td>
+                </tr>`;
+            }
+            
+            html += '</table>';
+            tableDiv.innerHTML = html;
+        }
+
+        // Hyperparameter presets
+        function applyPreset(preset) {
+            const presets = {
+                'default': {
+                    'learning-rate': '2e-5',
+                    'batch-size': '8',
+                    'dropout': '0.1',
+                    'weight-decay': '0.01',
+                    'scheduler': 'linear',
+                    'warmup-ratio': '0.06',
+                    'max-length': '512',
+                    'hidden-dim': '256',
+                    'patience': '3',
+                    'min-delta': '0.001'
+                },
+                'small_data': {
+                    'learning-rate': '1e-5',
+                    'batch-size': '4',
+                    'dropout': '0.3',
+                    'weight-decay': '0.1',
+                    'scheduler': 'cosine',
+                    'warmup-ratio': '0.1',
+                    'max-length': '256',
+                    'hidden-dim': '128',
+                    'patience': '5',
+                    'min-delta': '0.0001'
+                },
+                'large_data': {
+                    'learning-rate': '3e-5',
+                    'batch-size': '16',
+                    'dropout': '0.1',
+                    'weight-decay': '0.01',
+                    'scheduler': 'linear',
+                    'warmup-ratio': '0.06',
+                    'max-length': '512',
+                    'hidden-dim': '512',
+                    'patience': '3',
+                    'min-delta': '0.001'
+                },
+                'fast': {
+                    'learning-rate': '5e-5',
+                    'batch-size': '16',
+                    'dropout': '0.1',
+                    'weight-decay': '0.0',
+                    'scheduler': 'constant',
+                    'warmup-ratio': '0.0',
+                    'max-length': '128',
+                    'hidden-dim': '128',
+                    'patience': '2',
+                    'min-delta': '0.01'
+                },
+                'regularized': {
+                    'learning-rate': '1e-5',
+                    'batch-size': '8',
+                    'dropout': '0.5',
+                    'weight-decay': '0.1',
+                    'scheduler': 'cosine',
+                    'warmup-ratio': '0.2',
+                    'max-length': '512',
+                    'hidden-dim': '256',
+                    'patience': '5',
+                    'min-delta': '0.0001'
+                }
+            };
+            
+            const settings = presets[preset];
+            if (settings) {
+                Object.keys(settings).forEach(key => {
+                    const element = document.getElementById(key);
+                    if (element) {
+                        element.value = settings[key];
+                    }
+                });
+                alert(`Applied "${preset}" preset`);
+            }
+        }
+
+        function getHyperparameters() {
+            return {
+                learning_rate: parseFloat(document.getElementById('learning-rate').value),
+                batch_size: parseInt(document.getElementById('batch-size').value),
+                dropout: parseFloat(document.getElementById('dropout').value),
+                weight_decay: parseFloat(document.getElementById('weight-decay').value),
+                scheduler: document.getElementById('scheduler').value,
+                warmup_ratio: parseFloat(document.getElementById('warmup-ratio').value),
+                max_length: parseInt(document.getElementById('max-length').value),
+                hidden_dim: parseInt(document.getElementById('hidden-dim').value),
+                patience: parseInt(document.getElementById('patience').value),
+                min_delta: parseFloat(document.getElementById('min-delta').value)
+            };
+        }
+
+        async function triggerTraining() {
+            const btn = document.getElementById('btn-train');
+            btn.disabled = true;
+            btn.textContent = '⏳ Training...';
+            
+            const progressDiv = document.getElementById('training-progress');
+            progressDiv.style.display = 'block';
+            
+            try {
+                const epochsInput = document.getElementById('epochs').value;
+                const epochs = epochsInput ? parseInt(epochsInput) : null;
+                const earlyStopping = document.getElementById('early-stopping').checked;
+                const hyperparams = getHyperparameters();
+                
+                const response = await fetch('/api/training/trigger', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        epochs: epochs,
+                        early_stopping: earlyStopping,
+                        hyperparameters: hyperparams
+                    })
+                });
+                
+                const data = await response.json();
+                
+                const resultDiv = document.getElementById('training-result');
+                resultDiv.style.display = 'block';
+                
+                if (data.success) {
+                    document.getElementById('training-fill').style.width = '100%';
+                    document.getElementById('training-message').textContent = 'Training complete!';
+                    
+                    resultDiv.innerHTML = `
+                        <span class="status-badge ready">✅ Training Complete</span>
+                        <div style="margin-top: 1rem;">
+                            <strong>Session:</strong> ${data.session_id}<br>
+                            <strong>Samples:</strong> ${data.n_samples}<br>
+                            <strong>Model:</strong> ${data.model_path}<br>
+                            <strong>Hyperparameters:</strong><br>
+                            <code style="font-size: 0.85rem; background: #f5f5f5; padding: 0.5rem; display: block; margin-top: 0.5rem; border-radius: 4px;">
+                                LR: ${hyperparams.learning_rate} | Batch: ${hyperparams.batch_size} | Dropout: ${hyperparams.dropout}<br>
+                                Scheduler: ${hyperparams.scheduler} | Warmup: ${hyperparams.warmup_ratio * 100}%
+                            </code>
+                        </div>
+                    `;
+                    
+                    refreshStatus();
+                } else {
+                    resultDiv.innerHTML = `<span class="status-badge error">❌ ${data.error}</span>`;
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                const resultDiv = document.getElementById('training-result');
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<span class="status-badge error">❌ ${error.message}</span>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 Start Training';
+            }
+        }
+    </script>
+</body>
+</html>
